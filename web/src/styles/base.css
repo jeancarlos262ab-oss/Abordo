@@ -1,0 +1,28 @@
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1rem; }
+body { margin: 0; background: var(--ink); }
+.ab { position: relative; font-family: var(--font); color: #fff; line-height: 1.6; font-size: 1rem; overflow-x: clip; }
+.ab h1, .ab h2, .ab h3, .ab p, .ab ul, .ab ol, .ab figure, .ab blockquote { margin: 0; padding: 0; }
+.ab ul, .ab ol { list-style: none; }
+.ab button { font: inherit; cursor: pointer; }
+.ab :focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
+.ab .facts :focus-visible { outline-color: var(--ink); }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 1rem; top: -5rem; z-index: 20; background: var(--pink); color: var(--ink); padding: .75rem 1.25rem; border-radius: .5rem; font-weight: 700; }
+.skip:focus { top: 1rem; }
+
+.logo { font-family: var(--display); font-weight: 900; font-size: 1.5rem; letter-spacing: .12em; color: #fff; text-decoration: none; }
+.inner { max-width: var(--max); margin: 0 auto; }
+
+/* Entradas al hacer scroll */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease var(--d, 0ms), transform .6s ease var(--d, 0ms); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* Menos movimiento si el sistema lo pide */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .reveal { opacity: 1; transform: none; }
+  .panel polyline { stroke-dashoffset: 0; }
+}

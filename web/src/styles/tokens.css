@@ -1,0 +1,14 @@
+:root {
+  --ink: #161314;
+  --ink-2: #231f20;
+  --graphite: #3a3536;
+  --grey: #8a8587;
+  --silver: #dedbdc;
+  --pink: #f7b5cd;
+  --paper: #f5f3f3;
+  --grad: linear-gradient(100deg, var(--ink-2) 0%, var(--graphite) 45%, var(--pink) 100%);
+  --gutter: clamp(1.25rem, 5vw, 5rem);
+  --max: 1680px;
+  --font: "Red Hat Text", "Segoe UI", system-ui, sans-serif;
+  --display: "Red Hat Display", "Segoe UI", system-ui, sans-serif;
+}
