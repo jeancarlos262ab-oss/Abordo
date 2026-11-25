@@ -18,6 +18,16 @@ export const validate = (schemas) => (req, _res, next) => {
   next();
 };
 
-export const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha con formato AAAA-MM-DD");
+/** Rango de un INTEGER de Postgres: fuera de él la base lanzaría error en vez de "no encontrado". */
+export const INT4_MAX = 2_147_483_647;
+
+const isRealDate = (s) => {
+  const t = Date.parse(`${s}T00:00:00Z`);
+  return !Number.isNaN(t) && new Date(t).toISOString().startsWith(s);
+};
+export const dateStr = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha con formato AAAA-MM-DD")
+  .refine(isRealDate, "Esa fecha no existe");
 export const pesosCents = z.number().int().min(100).max(100_000);
 export const phoneMx = z.string().regex(/^\d{10}$/, "Teléfono de 10 dígitos");

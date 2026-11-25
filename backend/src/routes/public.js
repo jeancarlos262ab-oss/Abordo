@@ -12,9 +12,9 @@ export function publicRoutes({ units, ownerService, chargeService }) {
   const limiter = rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false, skip: () => process.env.NODE_ENV === "test" });
 
   r.get("/units/:code", validate({ params: code }), wrap(async (req, res) => {
-    const u = units.findByCode(req.valid.params.code);
+    const u = await units.findByCode(req.valid.params.code);
     if (!u?.active) throw notFound("No encontramos esa unidad. Revisa el número.");
-    res.json({ code: u.code, label: u.label, route: u.route, fareCents: u.fareCents, acceptsPayments: ownerService.canCharge(u.ownerId) });
+    res.json({ code: u.code, label: u.label, route: u.route, fareCents: u.fareCents, acceptsPayments: await ownerService.canCharge(u.ownerId) });
   }));
 
   r.post(

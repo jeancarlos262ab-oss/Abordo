@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import '../utils/money.dart';
 
 class RankedItem {
@@ -10,6 +12,7 @@ class RankedItem {
 }
 
 /// Lista ordenada con barra proporcional (como "cobros por chofer" de la landing).
+/// El primer lugar lleva el rosa de marca; los demás, una versión suave.
 class RankedBars extends StatelessWidget {
   const RankedBars({super.key, required this.items});
   final List<RankedItem> items;
@@ -17,36 +20,46 @@ class RankedBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
     final max = items.fold<int>(1, (m, i) => i.cents > m ? i.cents : m);
     return Column(
       children: [
-        for (final i in items)
+        for (var n = 0; n < items.length; n++)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: EdgeInsets.only(top: n == 0 ? 0 : 18),
             child: Semantics(
-              label: '${i.name}: ${Money.format(i.cents)}, ${i.caption}',
+              label: '${n + 1}. ${items[n].name}: ${Money.format(items[n].cents)}, ${items[n].caption}',
               excludeSemantics: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(i.name, style: text.titleMedium, overflow: TextOverflow.ellipsis)),
-                      Text(Money.format(i.cents), style: text.titleMedium),
+                      Container(
+                        width: 26,
+                        height: 26,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: n == 0 ? p.accentSoft : p.field, shape: BoxShape.circle),
+                        child: Text('${n + 1}', style: text.labelMedium?.copyWith(color: n == 0 ? p.text : p.muted)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(items[n].name, style: text.titleMedium, overflow: TextOverflow.ellipsis)),
+                      const SizedBox(width: 8),
+                      Text(Money.format(items[n].cents), style: tabular(text.titleMedium)),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  ClipRect(
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
                     child: LinearProgressIndicator(
-                      value: i.cents / max,
-                      minHeight: 12,
-                      color: scheme.primary,
-                      backgroundColor: scheme.outline.withOpacity(.25),
+                      value: items[n].cents / max,
+                      minHeight: 10,
+                      color: n == 0 ? p.accent : p.accent.withOpacity(.45),
+                      backgroundColor: p.field,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(i.caption, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  const SizedBox(height: 6),
+                  Text(items[n].caption, style: text.bodySmall?.copyWith(color: p.muted)),
                 ],
               ),
             ),

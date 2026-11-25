@@ -4,6 +4,75 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'app_button.dart';
 
+/// Diálogo con la forma de la app: icono en círculo, título, contenido y botones apilados.
+/// Los botones llegan a todo lo ancho, fáciles de tocar con una sola mano.
+class AppDialog extends StatelessWidget {
+  const AppDialog({
+    super.key,
+    required this.title,
+    required this.actions,
+    this.icon,
+    this.iconColor,
+    this.iconBackground,
+    this.message,
+    this.child,
+  });
+
+  final String title;
+  final String? message;
+  final Widget? child;
+  final IconData? icon;
+  final Color? iconColor;
+  final Color? iconBackground;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final text = Theme.of(context).textTheme;
+    return Dialog(
+      backgroundColor: p.card,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rXl + 4)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (icon != null) ...[
+                Center(
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(color: iconBackground ?? p.accentSoft, shape: BoxShape.circle),
+                    child: Icon(icon, size: 30, color: iconColor ?? p.text),
+                  ),
+                ),
+                const SizedBox(height: 18),
+              ],
+              Semantics(header: true, child: Text(title, textAlign: TextAlign.center, style: text.headlineSmall)),
+              if (message != null) ...[
+                const SizedBox(height: 10),
+                Text(message!, textAlign: TextAlign.center, style: text.bodyLarge?.copyWith(color: p.muted)),
+              ],
+              if (child != null) ...[const SizedBox(height: 18), child!],
+              const SizedBox(height: 24),
+              for (var i = 0; i < actions.length; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                actions[i],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Pregunta de sí/no con botones grandes. Devuelve true si la persona confirma.
 Future<bool> confirm(
   BuildContext context, {
@@ -12,22 +81,23 @@ Future<bool> confirm(
   required String confirmLabel,
   String cancelLabel = 'Mejor no',
   bool danger = false,
+  IconData? icon,
 }) async {
+  final p = context.palette;
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      shape: const RoundedRectangleBorder(),
-      title: Text(title),
-      content: Text(message),
-      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      actionsOverflowDirection: VerticalDirection.down,
+    builder: (ctx) => AppDialog(
+      icon: icon ?? (danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded),
+      iconColor: danger ? p.danger : null,
+      iconBackground: danger ? p.dangerSoft : null,
+      title: title,
+      message: message,
       actions: [
         AppButton(
           label: confirmLabel,
           kind: danger ? ButtonKind.danger : ButtonKind.primary,
           onPressed: () => Navigator.pop(ctx, true),
         ),
-        const SizedBox(height: 8),
         AppButton(label: cancelLabel, kind: ButtonKind.secondary, onPressed: () => Navigator.pop(ctx, false)),
       ],
     ),
@@ -41,15 +111,27 @@ Future<T?> showFormSheet<T>(BuildContext context, {required String title, requir
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    showDragHandle: true,
+    constraints: const BoxConstraints(maxWidth: Dimens.maxContentWidth),
     builder: (ctx) => Padding(
       padding: EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, MediaQuery.viewInsetsOf(ctx).bottom + 24),
       child: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title, style: Theme.of(ctx).textTheme.headlineSmall),
-            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(child: Semantics(header: true, child: Text(title, style: Theme.of(ctx).textTheme.headlineSmall))),
+                IconButton(
+                  tooltip: 'Cerrar',
+                  onPressed: () => Navigator.of(ctx).maybePop(),
+                  style: IconButton.styleFrom(backgroundColor: ctx.palette.field, fixedSize: const Size.square(40)),
+                  icon: const Icon(Icons.close_rounded, size: 22),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
             builder(ctx),
           ],
         ),
@@ -72,7 +154,7 @@ void showMessageOn(ScaffoldMessengerState messenger, String message, {bool error
         duration: const Duration(seconds: 4),
         content: Row(
           children: [
-            Icon(error ? Icons.error_rounded : Icons.check_circle_rounded, color: error ? AppColors.danger : AppColors.success),
+            Icon(error ? Icons.error_rounded : Icons.check_circle_rounded, color: error ? AppColors.dangerBright : AppColors.successBright),
             const SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],

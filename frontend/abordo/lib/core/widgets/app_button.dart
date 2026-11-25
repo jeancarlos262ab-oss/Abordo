@@ -4,9 +4,24 @@ import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 
-enum ButtonKind { primary, secondary, danger, text }
+enum ButtonKind {
+  /// Acción principal: tinta en claro, rosa en oscuro.
+  primary,
 
-/// Botón grande y claro: icono + texto, 64 px de alto, vibración leve al tocar.
+  /// Acción secundaria: superficie neutra con borde.
+  secondary,
+
+  /// Acción destructiva con énfasis (confirmaciones).
+  danger,
+
+  /// Acción destructiva discreta (fondo rojo suave).
+  dangerSoft,
+
+  /// Enlace-botón sin fondo.
+  text,
+}
+
+/// Botón grande y claro: icono + texto, 56 px de alto, vibración leve al tocar.
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -26,16 +41,37 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
     final enabled = onPressed != null && !loading;
-    final shape = const RoundedRectangleBorder();
-    const size = Size.fromHeight(Dimens.buttonHeight);
+
+    late final Color bg;
+    late final Color fg;
+    var side = BorderSide.none;
+    switch (kind) {
+      case ButtonKind.primary:
+        bg = scheme.primary;
+        fg = scheme.onPrimary;
+      case ButtonKind.secondary:
+        bg = p.card;
+        fg = p.text;
+        side = BorderSide(color: p.borderStrong, width: 1.5);
+      case ButtonKind.danger:
+        bg = p.danger;
+        fg = scheme.onError;
+      case ButtonKind.dangerSoft:
+        bg = p.dangerSoft;
+        fg = p.danger;
+      case ButtonKind.text:
+        bg = Colors.transparent;
+        fg = p.text;
+    }
 
     final child = loading
-        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3))
+        ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.8, color: fg))
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[Icon(icon, size: 24), const SizedBox(width: 10)],
+              if (icon != null) ...[Icon(icon, size: 22), const SizedBox(width: 10)],
               Flexible(child: Text(label, textAlign: TextAlign.center)),
             ],
           );
@@ -45,44 +81,37 @@ class AppButton extends StatelessWidget {
       onPressed!();
     }
 
-    final cb = enabled ? tap : null;
-    return switch (kind) {
-      ButtonKind.primary => FilledButton(
-          onPressed: cb,
-          style: FilledButton.styleFrom(minimumSize: size, shape: shape, textStyle: Theme.of(context).textTheme.labelLarge),
-          child: child,
+    // Mientras carga se mantiene el color normal (no el gris de "deshabilitado").
+    final VoidCallback? cb = enabled ? tap : (loading ? () {} : null);
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rMd), side: side);
+    final labelStyle = Theme.of(context).textTheme.labelLarge;
+
+    if (kind == ButtonKind.text) {
+      return TextButton(
+        onPressed: cb,
+        style: TextButton.styleFrom(
+          minimumSize: const Size.fromHeight(Dimens.minTap),
+          foregroundColor: fg,
+          textStyle: labelStyle,
         ),
-      ButtonKind.danger => FilledButton(
-          onPressed: cb,
-          style: FilledButton.styleFrom(
-            minimumSize: size,
-            shape: shape,
-            backgroundColor: AppColors.danger,
-            foregroundColor: Colors.white,
-            textStyle: Theme.of(context).textTheme.labelLarge,
-          ),
-          child: child,
-        ),
-      ButtonKind.secondary => FilledButton(
-          onPressed: cb,
-          style: FilledButton.styleFrom(
-            minimumSize: size,
-            shape: shape,
-            backgroundColor: AppColors.graphite,
-            foregroundColor: Colors.white,
-            textStyle: Theme.of(context).textTheme.labelLarge,
-          ),
-          child: child,
-        ),
-      ButtonKind.text => TextButton(
-          onPressed: cb,
-          style: TextButton.styleFrom(
-            minimumSize: const Size.fromHeight(Dimens.minTap),
-            foregroundColor: scheme.onSurface,
-            textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(decoration: TextDecoration.underline),
-          ),
-          child: child,
-        ),
-    };
+        child: child,
+      );
+    }
+
+    return FilledButton(
+      onPressed: cb,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(Dimens.buttonHeight),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        backgroundColor: bg,
+        foregroundColor: fg,
+        disabledBackgroundColor: bg.withOpacity(.38),
+        disabledForegroundColor: fg.withOpacity(.6),
+        elevation: 0,
+        shape: shape,
+        textStyle: labelStyle,
+      ),
+      child: child,
+    );
   }
 }

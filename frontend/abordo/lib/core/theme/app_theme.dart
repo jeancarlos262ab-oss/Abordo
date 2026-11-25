@@ -1,107 +1,188 @@
+import 'dart:ui' show FontFeature;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// Medidas compartidas. Pensadas para dedos grandes y poca precisión (personas mayores).
+/// Medidas compartidas. Pensadas para dedos grandes y poca precisión (personas mayores):
+/// botones de 56 px, objetivos táctiles de al menos 48 px y mucho aire entre elementos.
 abstract final class Dimens {
-  static const pagePadding = 18.0;
+  static const pagePadding = 20.0;
   static const maxContentWidth = 560.0;
-  static const buttonHeight = 52.0;
-  static const radius = 0.0; // diseño de esquinas rectas
-  static const gap = 14.0;
+  static const buttonHeight = 56.0;
+  static const gap = 12.0;
   static const minTap = 48.0;
+
+  // Escala de radios.
+  static const rSm = 12.0;
+  static const rMd = 16.0;
+  static const rLg = 22.0;
+  static const rXl = 28.0;
 }
 
+/// Cifras con ancho fijo: los montos no "bailan" al cambiar.
+TextStyle tabular(TextStyle? style) =>
+    (style ?? const TextStyle()).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+
 abstract final class AppTheme {
-  static final ThemeData dark = _build(
-        const ColorScheme(
-          brightness: Brightness.dark,
-          primary: AppColors.pink,
-          onPrimary: AppColors.ink,
-          secondary: AppColors.silver,
-          onSecondary: AppColors.ink,
-          error: Color(0xFFFF8A8A),
-          onError: AppColors.ink,
-          surface: AppColors.ink,
-          onSurface: Colors.white,
-          surfaceContainerHighest: Color(0xFF2B2627),
-          onSurfaceVariant: AppColors.silver,
-          outline: AppColors.grey,
-        ),
-      );
+  static final ThemeData light = _build(Brightness.light);
+  static final ThemeData dark = _build(Brightness.dark);
 
-  static ThemeData _build(ColorScheme scheme) {
-    final body = GoogleFonts.redHatTextTextTheme();
-    final display = GoogleFonts.redHatDisplay;
-    final text = body
-        .copyWith(
-          displaySmall: display(fontSize: 34, fontWeight: FontWeight.w900, height: 1.1),
-          headlineMedium: display(fontSize: 26, fontWeight: FontWeight.w900, height: 1.15),
-          headlineSmall: display(fontSize: 21, fontWeight: FontWeight.w800, height: 1.2),
-          titleLarge: display(fontSize: 19, fontWeight: FontWeight.w800),
-          titleMedium: body.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
-          bodyLarge: body.bodyLarge?.copyWith(fontSize: 17, height: 1.4),
-          bodyMedium: body.bodyMedium?.copyWith(fontSize: 15, height: 1.4),
-          bodySmall: body.bodySmall?.copyWith(fontSize: 13, height: 1.4),
-          labelLarge: body.labelLarge?.copyWith(fontSize: 17, fontWeight: FontWeight.w700),
-        )
-        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+  static TextTheme _textTheme(Color color) {
+    TextStyle f(double size, FontWeight weight, {double? height, double? spacing, bool tnum = false}) => GoogleFonts.plusJakartaSans(
+          fontSize: size,
+          fontWeight: weight,
+          height: height,
+          letterSpacing: spacing,
+          color: color,
+          fontFeatures: tnum ? const [FontFeature.tabularFigures()] : null,
+        );
 
-    const none = InputBorder.none;
-    const square = RoundedRectangleBorder();
-    final squareButton = ButtonStyle(shape: WidgetStateProperty.all(square));
+    return TextTheme(
+      displayLarge: f(52, FontWeight.w800, height: 1.04, spacing: -1.6, tnum: true),
+      displayMedium: f(42, FontWeight.w800, height: 1.06, spacing: -1.2, tnum: true),
+      displaySmall: f(34, FontWeight.w800, height: 1.1, spacing: -.9, tnum: true),
+      headlineLarge: f(32, FontWeight.w800, height: 1.12, spacing: -.8),
+      headlineMedium: f(27, FontWeight.w800, height: 1.16, spacing: -.6),
+      headlineSmall: f(21, FontWeight.w700, height: 1.25, spacing: -.3),
+      titleLarge: f(18, FontWeight.w700, height: 1.3, spacing: -.1),
+      titleMedium: f(16, FontWeight.w600, height: 1.35),
+      titleSmall: f(14, FontWeight.w600, height: 1.35),
+      bodyLarge: f(16, FontWeight.w400, height: 1.45),
+      bodyMedium: f(15, FontWeight.w400, height: 1.45),
+      bodySmall: f(13, FontWeight.w400, height: 1.4),
+      labelLarge: f(16, FontWeight.w700, height: 1.2),
+      labelMedium: f(13, FontWeight.w700, height: 1.2),
+      labelSmall: f(11.5, FontWeight.w700, height: 1.2, spacing: .9),
+    );
+  }
+
+  static ThemeData _build(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final p = isDark ? AppPalette.dark : AppPalette.light;
+
+    // En claro, la acción principal es tinta; en oscuro, el rosa de marca.
+    final primary = isDark ? AppColors.pink : AppColors.ink;
+    final onPrimary = isDark ? AppColors.ink : Colors.white;
+
+    final scheme = ColorScheme(
+      brightness: brightness,
+      primary: primary,
+      onPrimary: onPrimary,
+      primaryContainer: p.accentSoft,
+      onPrimaryContainer: p.text,
+      secondary: AppColors.pink,
+      onSecondary: AppColors.ink,
+      secondaryContainer: p.accentSoft,
+      onSecondaryContainer: p.text,
+      error: p.danger,
+      onError: isDark ? AppColors.ink : Colors.white,
+      errorContainer: p.dangerSoft,
+      onErrorContainer: p.danger,
+      surface: p.card,
+      onSurface: p.text,
+      onSurfaceVariant: p.muted,
+      outline: p.borderStrong,
+      outlineVariant: p.border,
+      surfaceContainerHighest: p.field,
+      inverseSurface: AppColors.ink,
+      onInverseSurface: Colors.white,
+    );
+
+    final text = _textTheme(p.text);
+
+    OutlineInputBorder outline(Color color, [double width = 1.5]) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Dimens.rMd),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+    final buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rMd));
 
     return ThemeData(
       useMaterial3: true,
+      brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: p.background,
+      canvasColor: p.background,
       textTheme: text,
+      extensions: <ThemeExtension<dynamic>>[p],
+      splashFactory: InkRipple.splashFactory,
       appBarTheme: AppBarTheme(
-        backgroundColor: scheme.surface,
-        foregroundColor: scheme.onSurface,
+        backgroundColor: p.background,
+        foregroundColor: p.text,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: text.titleLarge,
-        toolbarHeight: 56,
+        titleTextStyle: text.headlineSmall,
+        toolbarHeight: 60,
       ),
-      // Campos sólidos, sin borde: el color de relleno cambia al enfocar.
+      // Campos claros y definidos: relleno de tarjeta, borde visible y foco marcado.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.graphite,
-        focusColor: const Color(0xFF5B4A51),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: none,
-        enabledBorder: none,
-        focusedBorder: none,
-        errorBorder: none,
-        focusedErrorBorder: none,
-        hintStyle: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
-        errorStyle: text.bodyMedium?.copyWith(color: scheme.error, fontWeight: FontWeight.w600),
+        fillColor: p.card,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        border: outline(p.borderStrong),
+        enabledBorder: outline(p.borderStrong),
+        focusedBorder: outline(isDark ? AppColors.pink : AppColors.ink, 2.2),
+        errorBorder: outline(p.danger),
+        focusedErrorBorder: outline(p.danger, 2.2),
+        hintStyle: text.bodyLarge?.copyWith(color: p.muted.withOpacity(.75)),
+        errorStyle: text.titleSmall?.copyWith(color: p.danger),
+        errorMaxLines: 3,
+        prefixIconColor: p.muted,
+        suffixIconColor: p.muted,
       ),
-      filledButtonTheme: FilledButtonThemeData(style: squareButton),
-      textButtonTheme: TextButtonThemeData(style: squareButton),
-      iconButtonTheme: IconButtonThemeData(style: squareButton),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(shape: square, elevation: 0),
-      bottomSheetTheme: const BottomSheetThemeData(shape: square, showDragHandle: false),
-      expansionTileTheme: const ExpansionTileThemeData(shape: Border(), collapsedShape: Border()),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(shape: buttonShape)),
+      textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(shape: buttonShape)),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        backgroundColor: AppColors.pink,
+        foregroundColor: AppColors.ink,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rLg)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: p.card,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        dragHandleColor: p.borderStrong,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Dimens.rXl))),
+      ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 68,
-        backgroundColor: scheme.surfaceContainerHighest,
-        indicatorColor: scheme.primary,
-        indicatorShape: square,
-        labelTextStyle: WidgetStatePropertyAll(text.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+        height: 74,
+        elevation: 0,
+        backgroundColor: p.card,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: AppColors.pink,
+        indicatorShape: const StadiumBorder(),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (s) => text.labelMedium?.copyWith(color: s.contains(WidgetState.selected) ? p.text : p.muted),
+        ),
         iconTheme: WidgetStateProperty.resolveWith(
-          (s) => IconThemeData(size: 26, color: s.contains(WidgetState.selected) ? scheme.onPrimary : scheme.onSurfaceVariant),
+          (s) => IconThemeData(size: 26, color: s.contains(WidgetState.selected) ? AppColors.ink : p.muted),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        shape: square,
         behavior: SnackBarBehavior.floating,
-        contentTextStyle: text.bodyLarge?.copyWith(color: scheme.surface),
-        backgroundColor: scheme.onSurface,
+        backgroundColor: isDark ? const Color(0xFF332D2F) : AppColors.ink,
+        contentTextStyle: text.bodyLarge?.copyWith(color: Colors.white),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rMd)),
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
-      dividerColor: scheme.outline.withOpacity(.3),
+      switchTheme: SwitchThemeData(
+        thumbColor: const WidgetStatePropertyAll(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? AppColors.success : p.switchOff),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: isDark ? AppColors.pink : AppColors.ink),
+      dividerTheme: DividerThemeData(color: p.border, thickness: 1, space: 1),
+      textSelectionTheme: TextSelectionThemeData(cursorColor: isDark ? AppColors.pink : AppColors.ink, selectionHandleColor: AppColors.pinkDeep),
+      listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.zero),
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
     );

@@ -41,7 +41,7 @@ class _RegisterOwnerPageState extends ConsumerState<RegisterOwnerPage> with Subm
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Cobra el pasaje\ncon CoDi', style: text.headlineMedium),
+          Text('Cobra el pasaje\ncon CoDi', style: text.headlineMedium?.copyWith(color: Colors.white)),
           const SizedBox(height: 6),
           Text('Registra tus unidades y ve tu cuadre del día.', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
         ],
@@ -49,24 +49,27 @@ class _RegisterOwnerPageState extends ConsumerState<RegisterOwnerPage> with Subm
       child: Form(
         key: formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LabeledField(label: 'Tu nombre', controller: _name, autofocus: true, validator: Validators.minLength(2, 'El nombre')),
+            LabeledField(label: 'Tu nombre', icon: Icons.badge_outlined, controller: _name, autofocus: true, validator: Validators.minLength(2, 'El nombre')),
             LabeledField(
               label: 'Tu usuario',
               helper: 'Con este usuario entrarás después.',
+              icon: Icons.person_outline_rounded,
               controller: _login,
               validator: Validators.minLength(3, 'El usuario'),
             ),
             LabeledField(
               label: 'Tu contraseña',
               helper: 'Mínimo 8 caracteres.',
+              icon: Icons.lock_outline_rounded,
               controller: _secret,
               obscure: true,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submit(),
               validator: Validators.minLength(8, 'La contraseña'),
             ),
+            const SizedBox(height: 4),
             AppButton(label: 'Crear cuenta', icon: Icons.check_rounded, loading: busy, onPressed: _submit),
           ],
         ),

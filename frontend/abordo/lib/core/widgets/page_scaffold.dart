@@ -7,8 +7,8 @@ import 'brand_hero.dart';
 /// Esqueleto de pantalla: contenido centrado con ancho máximo y relleno uniforme.
 ///
 /// * Sin `hero`: barra superior normal con `title` y `actions`.
-/// * Con `hero`: cabecera de marca (degradado + ruta punteada) con el botón de regreso, el
-///   `title` y las `actions` dentro de ella, y `hero` como contenido debajo de la barra.
+/// * Con `hero`: cabecera de marca (tinta + resplandor + ruta punteada) con el botón de regreso,
+///   el `title` y las `actions` dentro de ella, y `hero` como contenido debajo de la barra.
 class PageScaffold extends StatelessWidget {
   const PageScaffold({
     super.key,
@@ -36,6 +36,17 @@ class PageScaffold extends StatelessWidget {
     final hasHero = hero != null;
     final showBar = hasHero && (title != null || actions != null || (showBack && Navigator.of(context).canPop()));
 
+    final constrainedBody = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: Dimens.maxContentWidth),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(Dimens.pagePadding, hasHero ? 24 : 8, Dimens.pagePadding, 32 + MediaQuery.paddingOf(context).bottom),
+          child: child,
+        ),
+      ),
+    );
+
     final body = hasHero
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -49,26 +60,23 @@ class PageScaffold extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding(padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 20, Dimens.pagePadding, 28), child: child),
+              constrainedBody,
             ],
           )
-        : Padding(padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 8, Dimens.pagePadding, 32), child: child);
+        : constrainedBody;
 
-    final content = Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: Dimens.maxContentWidth),
-        child: scroll ? SingleChildScrollView(child: body) : body,
-      ),
-    );
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: hasHero || (title == null && actions == null)
           ? null
-          : AppBar(title: title == null ? null : Text(title!), actions: actions, automaticallyImplyLeading: showBack),
+          : AppBar(
+              title: title == null ? null : Text(title!),
+              actions: actions,
+              automaticallyImplyLeading: showBack,
+            ),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: hasHero ? SystemUiOverlayStyle.light : (Theme.of(context).brightness == Brightness.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark),
-        child: SafeArea(top: !hasHero, child: content),
+        value: hasHero || isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: SafeArea(top: !hasHero, bottom: false, child: scroll ? SingleChildScrollView(child: body) : body),
       ),
       bottomNavigationBar: bottomBar,
       floatingActionButton: floatingActionButton,

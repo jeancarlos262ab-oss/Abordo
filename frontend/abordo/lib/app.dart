@@ -18,8 +18,9 @@ class AbordoApp extends StatelessWidget {
     return MaterialApp(
       title: 'ABORDO',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      themeMode: ThemeMode.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       locale: const Locale('es', 'MX'),
       supportedLocales: const [Locale('es', 'MX'), Locale('es')],
       localizationsDelegates: const [

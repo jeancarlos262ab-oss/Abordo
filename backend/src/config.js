@@ -9,7 +9,9 @@ const schema = z.object({
   JWT_SECRET: z.string().min(16).optional(),
   JWT_EXPIRES_IN: z.string().default("7d"),
   ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, "ENCRYPTION_KEY debe ser hex de 64 caracteres").optional().or(z.literal("")),
-  DATABASE_PATH: z.string().default("./data/abordo.db"),
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, "DATABASE_URL debe empezar con postgres:// o postgresql://").optional(),
+  DATABASE_SSL: z.enum(["auto", "true", "false", "no-verify"]).default("auto"),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   PEY_MODE: z.enum(["mock", "live"]).default("mock"),
   PEY_API_BASE_URL: z.string().default("https://api.pey.example"),
   PEY_WEBHOOK_SECRET: z.string().default(""),
@@ -24,6 +26,9 @@ export function loadConfig(env = process.env) {
   if (prod && (!e.JWT_SECRET || !e.ENCRYPTION_KEY)) {
     throw new Error("En producción JWT_SECRET y ENCRYPTION_KEY son obligatorios.");
   }
+  if (prod && !e.DATABASE_URL) {
+    throw new Error("En producción DATABASE_URL es obligatorio.");
+  }
   if (prod && e.PEY_MODE === "live" && !e.PEY_WEBHOOK_SECRET) {
     throw new Error("PEY_WEBHOOK_SECRET es obligatorio con PEY_MODE=live.");
   }
@@ -37,7 +42,11 @@ export function loadConfig(env = process.env) {
     jwtSecret: e.JWT_SECRET ?? randomBytes(32).toString("hex"),
     jwtExpiresIn: e.JWT_EXPIRES_IN,
     encryptionKey: Buffer.from(e.ENCRYPTION_KEY || randomBytes(32).toString("hex"), "hex"),
-    databasePath: e.DATABASE_PATH,
+    database: {
+      url: e.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/abordo",
+      ssl: e.DATABASE_SSL,
+      poolMax: e.DATABASE_POOL_MAX,
+    },
     pey: {
       mode: e.PEY_MODE,
       baseUrl: e.PEY_API_BASE_URL.replace(/\/$/, ""),

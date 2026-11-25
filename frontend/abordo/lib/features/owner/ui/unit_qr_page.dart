@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/scan_frame.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../domain/owner_models.dart';
 
 /// QR fijo de la unidad, listo para tomar captura/imprimir y pegar en la combi.
+/// El QR va en negro sobre blanco: es lo que mejor leen las cámaras.
 class UnitQrPage extends StatelessWidget {
   const UnitQrPage({super.key, required this.unit});
   final OwnerUnit unit;
@@ -15,38 +19,54 @@ class UnitQrPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final p = context.palette;
     return PageScaffold(
       title: 'Código de la unidad',
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(unit.label, style: text.headlineMedium),
+          Text(unit.label, style: text.headlineMedium?.copyWith(color: Colors.white)),
+          const SizedBox(height: 4),
           Text('${unit.route} · Pasaje ${Money.format(unit.fareCents)}', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
             child: Semantics(
               label: 'Código QR de ${unit.label}',
               child: ScanFrame(
+                color: p.accent,
+                scanning: false,
                 child: Container(
-                  margin: const EdgeInsets.all(6),
+                  margin: const EdgeInsets.all(8),
                   padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(color: AppColors.pink),
-                  child: QrImageView(data: unit.qrContent, size: 210, backgroundColor: AppColors.pink),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(Dimens.rMd),
+                    border: Border.all(color: p.border),
+                  ),
+                  child: QrImageView(data: unit.qrContent, size: 210, backgroundColor: Colors.white),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 24),
-          Text('Número de la unidad', style: text.bodyLarge),
-          Text(unit.spacedCode, style: text.headlineMedium?.copyWith(letterSpacing: 5)),
-          const SizedBox(height: 20),
-          Text(
-            'Imprime este código y pégalo junto a la puerta y cerca del chofer. Los pasajeros lo escanean para pagar.',
-            textAlign: TextAlign.center,
-            style: text.bodyLarge,
+          AppCard(
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
+            child: Column(
+              children: [
+                Text('NÚMERO DE LA UNIDAD', style: text.labelSmall?.copyWith(color: p.muted)),
+                const SizedBox(height: 6),
+                Text(unit.spacedCode, style: text.headlineLarge?.copyWith(letterSpacing: 6)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const InfoNote(
+            icon: Icons.print_outlined,
+            message: 'Imprime este código y pégalo junto a la puerta y cerca del chofer. Los pasajeros lo escanean para pagar.',
           ),
         ],
       ),

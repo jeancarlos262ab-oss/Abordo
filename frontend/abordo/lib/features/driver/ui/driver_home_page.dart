@@ -49,7 +49,7 @@ class _ShiftHero extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Listo para\nempezar', style: text.headlineMedium),
+          Text('Listo para\nempezar', style: text.headlineMedium?.copyWith(color: Colors.white)),
           const SizedBox(height: 6),
           Text('Elige tu unidad para abrir turno.', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
         ],
@@ -61,16 +61,35 @@ class _ShiftHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const PulseDot(),
-              const SizedBox(width: 4),
-              Expanded(child: Text('En turno · ${s.unit!.label} · ${s.unit!.route}', style: text.titleMedium, overflow: TextOverflow.ellipsis)),
-            ],
+          Container(
+            padding: const EdgeInsets.fromLTRB(2, 4, 14, 4),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(.1), borderRadius: BorderRadius.circular(99)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const PulseDot(size: 9),
+                Flexible(
+                  child: Text(
+                    'EN TURNO · ${s.unit!.label} · ${s.unit!.route}',
+                    style: text.labelSmall?.copyWith(color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text('Cobrado hoy', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(Money.format(s.amountCents), style: text.displayMedium?.copyWith(color: Colors.white)),
           ),
           const SizedBox(height: 4),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(Money.format(s.amountCents), style: text.displaySmall?.copyWith(fontSize: 46))),
-          Text('${s.count} ${s.count == 1 ? 'pasajero' : 'pasajeros'} · desde las ${AppDates.time(s.startedAt!)}', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
+          Text(
+            '${s.count} ${s.count == 1 ? 'pasajero' : 'pasajeros'} · desde las ${AppDates.time(s.startedAt!)}',
+            style: text.bodyLarge?.copyWith(color: AppColors.silver),
+          ),
         ],
       ),
     );

@@ -45,18 +45,29 @@ class _LoginPageState extends ConsumerState<LoginPage> with SubmitMixin<LoginPag
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_isDriver ? 'Entra a tu turno' : 'Entra a tu panel', style: text.headlineMedium),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(color: AppColors.pink, borderRadius: BorderRadius.circular(18)),
+            child: Icon(_isDriver ? Icons.directions_bus_rounded : Icons.storefront_rounded, size: 28, color: AppColors.ink),
+          ),
+          const SizedBox(height: 18),
+          Text(_isDriver ? 'Entra a tu turno' : 'Entra a tu panel', style: text.headlineMedium?.copyWith(color: Colors.white)),
           const SizedBox(height: 6),
-          Text(_isDriver ? 'Usa el usuario y el PIN que te dio tu dueño.' : 'Con tu usuario y contraseña.', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
+          Text(
+            _isDriver ? 'Usa el usuario y el PIN que te dio tu dueño.' : 'Con tu usuario y contraseña.',
+            style: text.bodyLarge?.copyWith(color: AppColors.silver),
+          ),
         ],
       ),
       child: Form(
         key: formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             LabeledField(
               label: 'Tu usuario',
+              icon: Icons.person_outline_rounded,
               controller: _login,
               autofocus: true,
               autofillHints: const [AutofillHints.username],
@@ -64,6 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SubmitMixin<LoginPag
             ),
             LabeledField(
               label: _isDriver ? 'Tu PIN' : 'Tu contraseña',
+              icon: Icons.lock_outline_rounded,
               controller: _secret,
               obscure: true,
               digitsOnly: _isDriver,
@@ -72,16 +84,17 @@ class _LoginPageState extends ConsumerState<LoginPage> with SubmitMixin<LoginPag
               onSubmitted: (_) => _submit(),
               validator: _isDriver ? Validators.digits(4, 6, 'El PIN') : Validators.minLength(4, 'La contraseña'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             AppButton(label: 'Entrar', icon: Icons.login_rounded, loading: busy, onPressed: _submit),
-            if (!_isDriver) ...[
-              const SizedBox(height: 12),
+            const SizedBox(height: 14),
+            if (_isDriver)
+              const InfoNote(message: '¿Olvidaste tu PIN? Pídele a tu dueño que te asigne uno nuevo.')
+            else
               AppButton(
                 label: 'Crear mi cuenta',
-                kind: ButtonKind.text,
+                kind: ButtonKind.secondary,
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const RegisterOwnerPage())),
               ),
-            ],
           ],
         ),
       ),

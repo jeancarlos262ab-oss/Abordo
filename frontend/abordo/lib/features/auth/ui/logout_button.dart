@@ -11,18 +11,27 @@ Future<void> confirmLogout(BuildContext context, WidgetRef ref) async {
     title: '¿Salir de tu cuenta?',
     message: 'Tendrás que volver a escribir tu usuario.',
     confirmLabel: 'Sí, salir',
+    icon: Icons.logout_rounded,
   );
   if (ok) await ref.read(sessionProvider.notifier).logout();
 }
 
-/// Botón "Salir" con texto visible para la barra superior.
+/// Botón "Salir" con texto visible, pensado para la cabecera oscura.
 class LogoutAction extends ConsumerWidget {
   const LogoutAction({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => TextButton.icon(
         onPressed: () => confirmLogout(context, ref),
-        icon: const Icon(Icons.logout_rounded),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.white.withOpacity(.12),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: const StadiumBorder(),
+          textStyle: Theme.of(context).textTheme.labelMedium,
+        ),
+        icon: const Icon(Icons.logout_rounded, size: 20),
         label: const Text('Salir'),
       );
 }

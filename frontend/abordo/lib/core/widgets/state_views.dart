@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/api_exception.dart';
+import '../theme/app_colors.dart';
 import 'app_button.dart';
 
 class LoadingView extends StatelessWidget {
@@ -11,20 +12,24 @@ class LoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(strokeWidth: 5),
-              const SizedBox(height: 20),
-              Text(message, style: Theme.of(context).textTheme.bodyLarge),
-            ],
+          padding: const EdgeInsets.all(40),
+          child: Semantics(
+            liveRegion: true,
+            label: message,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 36, height: 36, child: CircularProgressIndicator(strokeWidth: 3.5)),
+                const SizedBox(height: 18),
+                Text(message, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: context.palette.muted)),
+              ],
+            ),
           ),
         ),
       );
 }
 
-/// Pantalla de mensaje con icono grande (vacío, error, aviso).
+/// Pantalla de mensaje con icono en un círculo suave (vacío, error, aviso).
 class MessageView extends StatelessWidget {
   const MessageView({super.key, required this.icon, required this.message, this.actionLabel, this.onAction});
   final IconData icon;
@@ -34,19 +39,27 @@ class MessageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: scheme.onSurfaceVariant),
-            const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge),
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(color: p.accentSoft, shape: BoxShape.circle),
+              child: Icon(icon, size: 42, color: Theme.of(context).brightness == Brightness.dark ? AppColors.pink : AppColors.ink),
+            ),
+            const SizedBox(height: 22),
+            Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5)),
             if (onAction != null) ...[
-              const SizedBox(height: 24),
-              AppButton(label: actionLabel ?? 'Reintentar', icon: Icons.refresh_rounded, onPressed: onAction),
+              const SizedBox(height: 26),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: AppButton(label: actionLabel ?? 'Reintentar', icon: Icons.refresh_rounded, onPressed: onAction),
+              ),
             ],
           ],
         ),

@@ -15,13 +15,10 @@ function groupBy(rows, keyFn, nameFn) {
 }
 
 export function reportService({ charges }) {
-  const rowsOf = (ownerId, date) => {
-    const { from, to } = dayRangeUtc(date);
-    return charges.paidInRange(ownerId, from, to);
-  };
   return {
-    summary(ownerId, date) {
-      const rows = rowsOf(ownerId, date);
+    async summary(ownerId, date) {
+      const { from, to } = dayRangeUtc(date);
+      const rows = await charges.paidInRange(ownerId, from, to);
       const hourly = Array.from({ length: 24 }, (_, hour) => ({ hour, totalCents: 0 }));
       for (const r of rows) hourly[hourMx(r.paid_at)].totalCents += r.amount_cents;
       return {
@@ -33,13 +30,12 @@ export function reportService({ charges }) {
         byUnit: groupBy(rows, (r) => r.unit_id, (r) => r.unit_label),
       };
     },
-    history(ownerId, date, { unitId, driverId, limit, offset }) {
-      let rows = rowsOf(ownerId, date);
-      if (unitId) rows = rows.filter((r) => r.unit_id === unitId);
-      if (driverId) rows = rows.filter((r) => r.driver_id === driverId);
+    async history(ownerId, date, { unitId, driverId, limit, offset }) {
+      const { from, to } = dayRangeUtc(date);
+      const { total, rows } = await charges.historyInRange(ownerId, from, to, { unitId, driverId, limit, offset });
       return {
-        total: rows.length,
-        items: rows.slice(offset, offset + limit).map((r) => ({
+        total,
+        items: rows.map((r) => ({
           id: r.id, amountCents: r.amount_cents, paidAt: r.paid_at, unitLabel: r.unit_label, driverName: r.driver_name ?? NO_DRIVER,
         })),
       };

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/action_card.dart';
 import '../../../core/widgets/dialogs.dart';
@@ -26,6 +28,7 @@ class _UnitPickerState extends ConsumerState<UnitPicker> {
       title: '¿Empezar turno?',
       message: '${unit.label} · ${unit.route}\nPasaje ${Money.format(unit.fareCents)}',
       confirmLabel: 'Sí, empezar',
+      icon: Icons.play_circle_outline_rounded,
     );
     if (!ok || !mounted) return;
     setState(() => _busy = true);
@@ -41,13 +44,14 @@ class _UnitPickerState extends ConsumerState<UnitPicker> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final p = context.palette;
     final units = ref.watch(driverUnitsProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('¿En qué unidad vas hoy?', style: text.headlineSmall),
-        const SizedBox(height: 8),
-        Text('Toca tu unidad para empezar el turno.', style: text.bodyLarge),
+        const SizedBox(height: 6),
+        Text('Toca tu unidad para empezar el turno.', style: text.bodyLarge?.copyWith(color: p.muted)),
         const SizedBox(height: 20),
         AsyncValueView<List<ShiftUnit>>(
           value: units,
@@ -58,11 +62,18 @@ class _UnitPickerState extends ConsumerState<UnitPicker> {
                   children: [
                     for (final u in list)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: ActionCard(
                           icon: Icons.directions_bus_rounded,
                           title: u.label,
-                          subtitle: '${u.route} · ${Money.format(u.fareCents)}',
+                          subtitle: u.route,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(Money.format(u.fareCents), style: tabular(text.titleLarge)),
+                              Icon(Icons.chevron_right_rounded, color: p.muted),
+                            ],
+                          ),
                           onTap: _busy ? () {} : () => _start(u),
                         ),
                       ),

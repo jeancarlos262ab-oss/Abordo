@@ -48,9 +48,9 @@ class _PulseDotState extends State<PulseDot> with SingleTickerProviderStateMixin
               Container(
                 width: s + s * 1.4 * _c.value,
                 height: s + s * 1.4 * _c.value,
-                decoration: BoxDecoration(color: widget.color.withOpacity(.45 * (1 - _c.value))),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color.withOpacity(.45 * (1 - _c.value))),
               ),
-              Container(width: s, height: s, decoration: BoxDecoration(color: widget.color)),
+              Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color)),
             ],
           ),
         ),

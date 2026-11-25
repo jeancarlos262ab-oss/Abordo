@@ -7,8 +7,17 @@ import '../utils/motion.dart';
 /// QR de adorno (generado con la librería `qr_flutter`) con la línea de escaneo de la landing.
 /// Su contenido es solo de muestra: no cobra nada.
 class QrMark extends StatefulWidget {
-  const QrMark({super.key, this.size = 120});
+  const QrMark({
+    super.key,
+    this.size = 120,
+    this.background = Colors.white,
+    this.foreground = AppColors.ink,
+    this.line = AppColors.pinkDeep,
+  });
   final double size;
+  final Color background;
+  final Color foreground;
+  final Color line;
 
   @override
   State<QrMark> createState() => _QrMarkState();
@@ -36,14 +45,16 @@ class _QrMarkState extends State<QrMark> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final pad = widget.size * .09;
+    final pad = widget.size * .1;
     return ExcludeSemantics(
       child: Container(
         width: widget.size,
         height: widget.size,
         padding: EdgeInsets.all(pad),
         decoration: BoxDecoration(
-          color: AppColors.pink,
+          color: widget.background,
+          borderRadius: BorderRadius.circular(widget.size * .2),
+          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8))],
         ),
         child: Stack(
           fit: StackFit.expand,
@@ -51,15 +62,22 @@ class _QrMarkState extends State<QrMark> with SingleTickerProviderStateMixin {
             QrImageView(
               data: 'ABORDO · pasaje con CoDi',
               padding: EdgeInsets.zero,
-              backgroundColor: AppColors.pink,
-              eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: AppColors.ink),
-              dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: AppColors.ink),
+              backgroundColor: widget.background,
+              eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.circle, color: widget.foreground),
+              dataModuleStyle: QrDataModuleStyle(dataModuleShape: QrDataModuleShape.circle, color: widget.foreground),
             ),
             AnimatedBuilder(
               animation: _c,
               builder: (_, __) => Align(
                 alignment: Alignment(0, -1 + 2 * _c.value),
-                child: Container(height: 3, color: Colors.white),
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: widget.line,
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: [BoxShadow(color: widget.line.withOpacity(.6), blurRadius: 8)],
+                  ),
+                ),
               ),
             ),
           ],

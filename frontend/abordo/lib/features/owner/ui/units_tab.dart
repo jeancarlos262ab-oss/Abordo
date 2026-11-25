@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
@@ -44,17 +45,18 @@ class _UnitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final p = context.palette;
     return AppCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: AppColors.pink),
-                child: ExcludeSemantics(child: QrImageView(data: unit.qrContent, size: 60, backgroundColor: AppColors.pink)),
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Dimens.rSm), border: Border.all(color: p.border)),
+                child: ExcludeSemantics(child: QrImageView(data: unit.qrContent, size: 64, backgroundColor: Colors.white, padding: EdgeInsets.zero)),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -62,16 +64,16 @@ class _UnitCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(unit.label, style: text.titleLarge),
-                    Text(unit.route, style: text.bodyLarge),
-                    const SizedBox(height: 6),
-                    Text('${Money.format(unit.fareCents)} · Código ${unit.spacedCode}', style: text.bodyMedium),
-                    const SizedBox(height: 10),
-                    StatusChip(label: unit.active ? 'Cobrando' : 'Apagada', good: unit.active),
+                    Text(unit.route, style: text.bodyMedium?.copyWith(color: p.muted)),
+                    const SizedBox(height: 8),
+                    Text('${Money.format(unit.fareCents)} · Código ${unit.spacedCode}', style: tabular(text.titleSmall)),
                   ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Align(alignment: Alignment.centerLeft, child: StatusChip(label: unit.active ? 'Cobrando' : 'Apagada', good: unit.active)),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -136,24 +138,40 @@ class _UnitFormState extends ConsumerState<_UnitForm> with SubmitMixin<_UnitForm
     return Form(
       key: formKey,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LabeledField(label: 'Nombre de la unidad', hint: 'Unidad 14', controller: _label, validator: Validators.notEmpty('el nombre')),
-          LabeledField(label: 'Ruta', hint: 'Ruta 52', controller: _route, validator: Validators.notEmpty('la ruta')),
+          LabeledField(label: 'Nombre de la unidad', hint: 'Unidad 14', icon: Icons.directions_bus_rounded, controller: _label, validator: Validators.notEmpty('el nombre')),
+          LabeledField(label: 'Ruta', hint: 'Ruta 52', icon: Icons.route_rounded, controller: _route, validator: Validators.notEmpty('la ruta')),
           LabeledField(
             label: 'Precio del pasaje (pesos)',
+            icon: Icons.attach_money_rounded,
             controller: _fare,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
             validator: Validators.money('El precio'),
           ),
-          if (widget.unit != null)
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('Cobrando con CoDi', style: Theme.of(context).textTheme.titleMedium),
-              subtitle: const Text('Apágala si la unidad no está en servicio.'),
-              value: _active,
-              onChanged: (v) => setState(() => _active = v),
+          if (widget.unit != null) ...[
+            AppCard(
+              shadow: false,
+              onTap: () => setState(() => _active = !_active),
+              padding: const EdgeInsets.fromLTRB(18, 12, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Cobrando con CoDi', style: Theme.of(context).textTheme.titleMedium),
+                        Text('Apágala si la unidad no está en servicio.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.palette.muted)),
+                      ],
+                    ),
+                  ),
+                  ExcludeSemantics(child: Switch(value: _active, onChanged: (v) => setState(() => _active = v))),
+                ],
+              ),
             ),
+            const SizedBox(height: 20),
+          ],
           const SizedBox(height: 8),
           AppButton(label: 'Guardar', icon: Icons.check_rounded, loading: busy, onPressed: _save),
         ],

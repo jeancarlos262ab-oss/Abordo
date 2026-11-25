@@ -1,13 +1,30 @@
 # ABORDO · Backend
 
-Node.js ≥ 22.9 · Express · SQLite (better-sqlite3) · zod · JWT.
+Node.js ≥ 22.9 · Express · PostgreSQL (`pg`) · zod · JWT.
 
 ```bash
-cp .env.example .env
+cp .env.example .env     # ajusta DATABASE_URL (ver "Base de datos")
 npm install
-npm start        # http://localhost:3000   (npm run dev recarga al editar)
-npm test         # pruebas de integración de punta a punta
+npm start                # http://localhost:3000   (npm run dev recarga al editar); migra la BD al arrancar
+npm test                 # pruebas de integración de punta a punta (no requiere instalar Postgres)
 ```
+
+## Base de datos
+
+PostgreSQL 14+ (probado en 16). Las tablas se crean/actualizan solas al arrancar (migraciones versionadas en
+`src/db/migrations.js`, tabla `schema_migrations`, seguras con varias instancias a la vez).
+
+| Dónde | `DATABASE_URL` |
+|---|---|
+| Local | `postgres://postgres:postgres@localhost:5432/abordo` (p. ej. `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16`) |
+| **Neon** | La cadena **Pooled connection** del panel (`…-pooler…neon.tech/…?sslmode=require`). Si la BD está en reposo, la primera petición tarda unos segundos en despertarla. |
+| **Render** | **Internal Database URL** si el servicio web está en Render (misma región); no necesita TLS. La *External* solo para conectarte desde tu máquina (usa TLS automáticamente). |
+
+Variables: `DATABASE_SSL` (`auto` | `true` | `no-verify` | `false`; con `auto` manda el `?sslmode=` de la URL, si lo hay) y
+`DATABASE_POOL_MAX` (default 10; mantenlo bajo con planes gratuitos). En producción `DATABASE_URL` es obligatoria.
+
+**Pruebas.** Por defecto usan PGlite (Postgres real en WASM, en memoria). Para correrlas contra un Postgres de verdad:
+`TEST_DATABASE_URL=postgres://… npm test` (crea un esquema temporal propio y lo borra al terminar; no toca tus tablas).
 
 ## Arquitectura
 
@@ -15,7 +32,7 @@ npm test         # pruebas de integración de punta a punta
 src/
 ├── config.js          variables de entorno validadas (zod)
 ├── app.js             composición de dependencias (único lugar donde se "cablea")
-├── db/                conexión + migraciones versionadas (PRAGMA user_version)
+├── db/                pool de Postgres + migraciones versionadas (schema_migrations)
 ├── repositories/      SQL; nada de reglas de negocio
 ├── services/          reglas de negocio (auth, cobros, turnos, dueño, reportes)
 ├── routes/            HTTP: validación con zod + llamada al servicio
@@ -28,7 +45,8 @@ Decisiones clave:
 
 - **Dinero en centavos enteros.** Nunca decimales.
 - **Idempotencia:** un cobro solo cambia a `paid` una vez (y recibe su consecutivo `paid_seq`), aunque llegue el webhook
-  y la consulta de respaldo a la vez.
+  y la consulta de respaldo a la vez. Con Postgres hay varias conexiones en paralelo, así que la asignación del consecutivo
+  va en una transacción con `pg_advisory_xact_lock`: sin repetidos ni huecos, en el orden en que se confirman los pagos.
 - **Aviso de voz sin sockets:** el chofer pide `GET /api/driver/shift/payments?afterSeq=N`; el consecutivo garantiza no perder
   ni repetir avisos aunque se vaya la señal.
 - **Un turno abierto por chofer y por unidad** (índices únicos parciales). Los cobros se atribuyen al turno abierto al momento de generarse.

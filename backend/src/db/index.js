@@ -1,80 +1,88 @@
-import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import pg from "pg";
+import { MIGRATIONS } from "./migrations.js";
 
-const MIGRATIONS = [
-  `
-  CREATE TABLE users (
-    id            INTEGER PRIMARY KEY,
-    role          TEXT NOT NULL CHECK (role IN ('owner','driver')),
-    owner_id      INTEGER REFERENCES users(id),      -- NULL para dueños
-    name          TEXT NOT NULL,
-    login         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    secret_hash   TEXT NOT NULL,
-    active        INTEGER NOT NULL DEFAULT 1,
-    created_at    TEXT NOT NULL
-  );
-  CREATE TABLE owner_settings (
-    owner_id        INTEGER PRIMARY KEY REFERENCES users(id),
-    business_name   TEXT NOT NULL DEFAULT '',
-    clabe           TEXT NOT NULL DEFAULT '',
-    pey_api_key_enc TEXT,
-    pey_secret_enc  TEXT,
-    pey_key_hint    TEXT NOT NULL DEFAULT ''
-  );
-  CREATE TABLE units (
-    id          INTEGER PRIMARY KEY,
-    owner_id    INTEGER NOT NULL REFERENCES users(id),
-    code        TEXT NOT NULL UNIQUE,               -- código público (QR fijo)
-    label       TEXT NOT NULL,                      -- "Unidad 14"
-    route       TEXT NOT NULL,                      -- "Ruta 52"
-    fare_cents  INTEGER NOT NULL,
-    active      INTEGER NOT NULL DEFAULT 1,
-    created_at  TEXT NOT NULL
-  );
-  CREATE INDEX idx_units_owner ON units(owner_id);
-  CREATE TABLE shifts (
-    id         INTEGER PRIMARY KEY,
-    driver_id  INTEGER NOT NULL REFERENCES users(id),
-    unit_id    INTEGER NOT NULL REFERENCES units(id),
-    started_at TEXT NOT NULL,
-    ended_at   TEXT
-  );
-  CREATE UNIQUE INDEX uq_open_shift_driver ON shifts(driver_id) WHERE ended_at IS NULL;
-  CREATE UNIQUE INDEX uq_open_shift_unit   ON shifts(unit_id)   WHERE ended_at IS NULL;
-  CREATE TABLE charges (
-    id           TEXT PRIMARY KEY,                  -- UUID impredecible
-    owner_id     INTEGER NOT NULL REFERENCES users(id),
-    unit_id      INTEGER NOT NULL REFERENCES units(id),
-    shift_id     INTEGER REFERENCES shifts(id),
-    driver_id    INTEGER REFERENCES users(id),
-    amount_cents INTEGER NOT NULL,
-    status       TEXT NOT NULL CHECK (status IN ('pending','paid','failed','expired')),
-    pey_ref      TEXT,
-    qr_payload   TEXT,
-    pay_link     TEXT,
-    created_at   TEXT NOT NULL,
-    expires_at   TEXT NOT NULL,
-    paid_at      TEXT,
-    paid_seq     INTEGER
-  );
-  CREATE INDEX idx_charges_paid ON charges(owner_id, paid_at) WHERE status = 'paid';
-  CREATE INDEX idx_charges_shift_seq ON charges(shift_id, paid_seq);
-  CREATE UNIQUE INDEX uq_charges_pey_ref ON charges(pey_ref) WHERE pey_ref IS NOT NULL;
-  `,
-];
+// COUNT/SUM llegan como int8 (texto por defecto en `pg`); los importes son centavos enteros, caben de sobra en Number.
+pg.types.setTypeParser(20, (v) => Number(v));
 
-export function openDatabase(path) {
-  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
-  const db = new Database(path);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  const version = db.pragma("user_version", { simple: true });
-  MIGRATIONS.slice(version).forEach((sql, i) => {
-    db.transaction(() => {
-      db.exec(sql);
-      db.pragma(`user_version = ${version + i + 1}`);
-    })();
+const MIGRATION_LOCK = 727_001; // lock de asesor: una sola instancia migra a la vez
+
+/**
+ * Interfaz mínima que usa el resto del backend (así las pruebas pueden usar otro motor de Postgres):
+ *   query(text, params) → { rows, rowCount }     exec(sql)  → varias sentencias, sin parámetros
+ *   tx(fn)              → BEGIN/COMMIT/ROLLBACK; `fn` recibe { query, exec } ligados a UNA conexión
+ *   close()
+ */
+export function createPgDatabase({ url, ssl, max = 10, log = console, options }) {
+  const pool = new pg.Pool({
+    connectionString: url,
+    ssl,
+    max,
+    options,
+    keepAlive: true,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 15_000, // Neon puede tardar unos segundos en "despertar" si estaba en reposo
   });
+  // Neon/Render cierran conexiones inactivas; sin este handler un 'error' en un cliente ocioso tumbaría el proceso.
+  pool.on("error", (err) => log.error("[db] error en una conexión inactiva (se descarta):", err.message));
+
+  const bind = (c) => ({ query: (text, params) => c.query(text, params), exec: (sql) => c.query(sql) });
+  return {
+    ...bind(pool),
+    async tx(fn) {
+      const client = await pool.connect();
+      let broken = false;
+      try {
+        await client.query("BEGIN");
+        const result = await fn(bind(client));
+        await client.query("COMMIT");
+        return result;
+      } catch (err) {
+        try { await client.query("ROLLBACK"); } catch { broken = true; }
+        throw err;
+      } finally {
+        client.release(broken); // si el ROLLBACK falló, la conexión se destruye en vez de reciclarse
+      }
+    },
+    close: () => pool.end(),
+  };
+}
+
+/**
+ * SSL según el entorno. Neon y Render (URL externa) exigen TLS; en local y en la URL interna de Render no se usa.
+ *   auto (default): si la URL trae `sslmode=` manda la URL; si no, TLS verificado salvo localhost / hosts internos sin punto.
+ *   true: TLS verificado · no-verify: TLS sin verificar el certificado · false: sin TLS
+ */
+export function resolveSsl(url, mode = "auto") {
+  if (mode === "false") return false;
+  if (mode === "true") return { rejectUnauthorized: true };
+  if (mode === "no-verify") return { rejectUnauthorized: false };
+  const u = new URL(url);
+  if (u.searchParams.has("sslmode")) return undefined;
+  const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(u.hostname) || !u.hostname.includes(".");
+  return local ? false : { rejectUnauthorized: true };
+}
+
+/** Aplica las migraciones pendientes dentro de UNA transacción, serializada entre instancias. */
+export async function migrate(db) {
+  await db.tx(async (t) => {
+    await t.query(`SELECT pg_advisory_xact_lock(${MIGRATION_LOCK})`); // xact-level: compatible con el pooler de Neon (PgBouncer)
+    await t.exec("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())");
+    const { rows } = await t.query("SELECT COALESCE(MAX(version), 0) AS v FROM schema_migrations");
+    const current = Number(rows[0].v);
+    for (let v = current; v < MIGRATIONS.length; v++) {
+      await t.exec(MIGRATIONS[v]);
+      await t.query("INSERT INTO schema_migrations (version) VALUES ($1)", [v + 1]);
+    }
+  });
+}
+
+export async function openDatabase({ url, ssl = "auto", poolMax = 10, log = console }) {
+  const db = createPgDatabase({ url, ssl: resolveSsl(url, ssl), max: poolMax, log });
+  try {
+    await migrate(db);
+  } catch (err) {
+    await db.close().catch(() => {});
+    throw err;
+  }
   return db;
 }

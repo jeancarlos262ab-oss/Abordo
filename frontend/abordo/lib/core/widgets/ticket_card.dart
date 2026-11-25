@@ -1,35 +1,77 @@
 import 'package:flutter/material.dart';
 
-/// Tarjeta tipo boleto: dos mitades separadas por una línea punteada con muescas a los lados.
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
+
+/// Tarjeta tipo boleto: dos mitades separadas por una línea punteada con muescas semicirculares
+/// recortadas de verdad a los lados (se ve el fondo de la pantalla a través de ellas).
 class TicketCard extends StatelessWidget {
   const TicketCard({super.key, required this.top, required this.bottom});
   final Widget top;
   final Widget bottom;
 
+  static const _notch = 12.0;
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    const notch = 8.0;
-    return Material(
-      color: scheme.surfaceContainerHighest,
-      clipBehavior: Clip.antiAlias,
-      shape: const RoundedRectangleBorder(),
-      child: Column(
+    final p = context.palette;
+    return Column(
         children: [
-          Padding(padding: const EdgeInsets.fromLTRB(22, 22, 22, 18), child: SizedBox(width: double.infinity, child: top)),
-          SizedBox(
-            height: notch * 2,
-            child: Stack(
-              children: [
-                Positioned.fill(left: 22, right: 22, child: Center(child: CustomPaint(size: const Size(double.infinity, 2), painter: _DashPainter(scheme.outline.withOpacity(.6))))),
-              ],
+          ClipPath(
+            clipper: const _TicketClipper(top: true),
+            child: Container(
+              width: double.infinity,
+              color: p.card,
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 20 + _notch),
+              child: top,
             ),
           ),
-          Padding(padding: const EdgeInsets.fromLTRB(22, 14, 22, 22), child: SizedBox(width: double.infinity, child: bottom)),
+          ClipPath(
+            clipper: const _TicketClipper(top: false),
+            child: Container(
+              width: double.infinity,
+              color: p.card,
+              padding: const EdgeInsets.fromLTRB(22, _notch + 18, 22, 22),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: -(_notch + 18),
+                    child: SizedBox(height: 2, child: CustomPaint(painter: _DashPainter(p.borderStrong))),
+                  ),
+                  SizedBox(width: double.infinity, child: bottom),
+                ],
+              ),
+            ),
+          ),
         ],
-      ),
     );
   }
+}
+
+class _TicketClipper extends CustomClipper<Path> {
+  const _TicketClipper({required this.top});
+  final bool top;
+
+  @override
+  Path getClip(Size size) {
+    const r = Dimens.rLg;
+    const n = TicketCard._notch;
+    final rect = top
+        ? RRect.fromRectAndCorners(Offset.zero & size, topLeft: const Radius.circular(r), topRight: const Radius.circular(r))
+        : RRect.fromRectAndCorners(Offset.zero & size, bottomLeft: const Radius.circular(r), bottomRight: const Radius.circular(r));
+    final shape = Path()..addRRect(rect);
+    final y = top ? size.height : 0.0;
+    final holes = Path()
+      ..addOval(Rect.fromCircle(center: Offset(0, y), radius: n))
+      ..addOval(Rect.fromCircle(center: Offset(size.width, y), radius: n));
+    return Path.combine(PathOperation.difference, shape, holes);
+  }
+
+  @override
+  bool shouldReclip(_TicketClipper old) => old.top != top;
 }
 
 class _DashPainter extends CustomPainter {
@@ -42,7 +84,7 @@ class _DashPainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
-    for (var x = 0.0; x < size.width; x += 12) {
+    for (var x = TicketCard._notch; x < size.width - TicketCard._notch; x += 12) {
       canvas.drawLine(Offset(x, 1), Offset(x + 6, 1), p);
     }
   }

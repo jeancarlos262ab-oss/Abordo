@@ -1,25 +1,24 @@
-import { nowIso } from "../lib/time.js";
+import { first } from "./_util.js";
 
-const toUser = (r) => r && { id: r.id, role: r.role, ownerId: r.owner_id, name: r.name, login: r.login, active: !!r.active, secretHash: r.secret_hash };
+const toUser = (r) => r && { id: r.id, role: r.role, ownerId: r.owner_id, name: r.name, login: r.login, active: r.active, secretHash: r.secret_hash };
 export const publicUser = ({ id, role, ownerId, name, login, active }) => ({ id, role, ownerId: ownerId ?? id, name, login, active });
 
 export function usersRepo(db) {
+  const one = async (sql, params) => toUser(first(await db.query(sql, params)));
   return {
-    findById: (id) => toUser(db.prepare("SELECT * FROM users WHERE id = ?").get(id)),
-    findByLogin: (login) => toUser(db.prepare("SELECT * FROM users WHERE login = ?").get(login)),
-    create({ role, ownerId = null, name, login, secretHash }) {
-      const { lastInsertRowid } = db
-        .prepare("INSERT INTO users (role, owner_id, name, login, secret_hash, created_at) VALUES (?,?,?,?,?,?)")
-        .run(role, ownerId, name, login, secretHash, nowIso());
-      return this.findById(Number(lastInsertRowid));
+    findById: (id) => one("SELECT * FROM users WHERE id = $1", [id]),
+    findByLogin: (login) => one("SELECT * FROM users WHERE lower(login) = lower($1)", [login]),
+    create: ({ role, ownerId = null, name, login, secretHash }) =>
+      one("INSERT INTO users (role, owner_id, name, login, secret_hash) VALUES ($1,$2,$3,$4,$5) RETURNING *", [role, ownerId, name, login, secretHash]),
+    async listDrivers(ownerId) {
+      const { rows } = await db.query("SELECT * FROM users WHERE owner_id = $1 AND role = 'driver' ORDER BY active DESC, name", [ownerId]);
+      return rows.map(toUser);
     },
-    listDrivers: (ownerId) =>
-      db.prepare("SELECT * FROM users WHERE owner_id = ? AND role = 'driver' ORDER BY active DESC, name").all(ownerId).map(toUser),
-    findDriver: (ownerId, id) => toUser(db.prepare("SELECT * FROM users WHERE id = ? AND owner_id = ? AND role = 'driver'").get(id, ownerId)),
-    update(id, { name, active, secretHash }) {
-      db.prepare("UPDATE users SET name = COALESCE(?, name), active = COALESCE(?, active), secret_hash = COALESCE(?, secret_hash) WHERE id = ?")
-        .run(name ?? null, active === undefined ? null : +active, secretHash ?? null, id);
-      return this.findById(id);
-    },
+    findDriver: (ownerId, id) => one("SELECT * FROM users WHERE id = $1 AND owner_id = $2 AND role = 'driver'", [id, ownerId]),
+    update: (id, { name, active, secretHash }) =>
+      one(
+        "UPDATE users SET name = COALESCE($1, name), active = COALESCE($2, active), secret_hash = COALESCE($3, secret_hash) WHERE id = $4 RETURNING *",
+        [name ?? null, active ?? null, secretHash ?? null, id],
+      ),
   };
 }

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/ranked_bars.dart';
-import '../../../core/widgets/sparkline.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/brand_hero.dart';
 import '../../../core/widgets/pulse_dot.dart';
+import '../../../core/widgets/ranked_bars.dart';
+import '../../../core/widgets/sparkline.dart';
+import '../../../core/widgets/stat_tile.dart';
 import '../../../core/widgets/state_views.dart';
 import '../domain/owner_models.dart';
 import '../state/owner_providers.dart';
@@ -29,7 +31,7 @@ class TodayTab extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(summaryProvider),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 8, Dimens.pagePadding, 32),
+        padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, 32),
         children: [
           _DayPicker(day: day, isToday: isToday),
           const SizedBox(height: 16),
@@ -44,6 +46,7 @@ class TodayTab extends ConsumerWidget {
   }
 }
 
+/// Selector de día: píldora con flechas grandes a los lados.
 class _DayPicker extends ConsumerWidget {
   const _DayPicker({required this.day, required this.isToday});
   final String day;
@@ -52,34 +55,45 @@ class _DayPicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
+    final p = context.palette;
     void go(int delta) => ref.read(selectedDayProvider.notifier).state = AppDates.shiftKey(day, delta);
-    return Row(
-      children: [
-        IconButton.filledTonal(
-          iconSize: 26,
-          tooltip: 'Día anterior',
-          constraints: const BoxConstraints.tightFor(width: Dimens.minTap, height: Dimens.minTap),
-          onPressed: () => go(-1),
-          icon: const Icon(Icons.chevron_left_rounded),
-        ),
-        Expanded(
-          child: Semantics(
-            liveRegion: true,
-            child: Text(
-              '${isToday ? 'Hoy, ' : ''}${AppDates.longDay(day)}',
-              textAlign: TextAlign.center,
-              style: text.titleMedium,
+
+    Widget arrow(IconData icon, String tooltip, VoidCallback? onTap) => IconButton(
+          tooltip: tooltip,
+          onPressed: onTap,
+          style: IconButton.styleFrom(
+            backgroundColor: p.field,
+            disabledBackgroundColor: p.field.withOpacity(.5),
+            fixedSize: const Size.square(Dimens.minTap),
+          ),
+          icon: Icon(icon, size: 26),
+        );
+
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: p.card,
+        borderRadius: BorderRadius.circular(Dimens.rLg),
+        border: Border.all(color: p.border),
+      ),
+      child: Row(
+        children: [
+          arrow(Icons.chevron_left_rounded, 'Día anterior', () => go(-1)),
+          Expanded(
+            child: Semantics(
+              liveRegion: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isToday) Text('HOY', style: text.labelSmall?.copyWith(color: p.accent)),
+                  Text(AppDates.longDay(day), textAlign: TextAlign.center, style: text.titleMedium),
+                ],
+              ),
             ),
           ),
-        ),
-        IconButton.filledTonal(
-          iconSize: 26,
-          tooltip: 'Día siguiente',
-          constraints: const BoxConstraints.tightFor(width: Dimens.minTap, height: Dimens.minTap),
-          onPressed: isToday ? null : () => go(1),
-          icon: const Icon(Icons.chevron_right_rounded),
-        ),
-      ],
+          arrow(Icons.chevron_right_rounded, 'Día siguiente', isToday ? null : () => go(1)),
+        ],
+      ),
     );
   }
 }
@@ -101,18 +115,19 @@ class _Content extends StatelessWidget {
       );
     }
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         BrandHero(
+          panel: true,
           safeTop: false,
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  if (isToday) ...[const PulseDot(), const SizedBox(width: 4)],
-                  Text(isToday ? 'Cobros de hoy' : 'Cobros del día', style: Theme.of(context).textTheme.titleMedium),
+                  if (isToday) ...[const PulseDot(size: 9), const SizedBox(width: 2)],
+                  Text(isToday ? 'Cobros de hoy' : 'Cobros del día', style: text.titleMedium?.copyWith(color: AppColors.silver)),
                 ],
               ),
               Semantics(
@@ -121,22 +136,44 @@ class _Content extends StatelessWidget {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(Money.format(summary.totalCents), style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 44)),
+                  child: Text(Money.format(summary.totalCents), style: text.displayMedium?.copyWith(color: Colors.white)),
                 ),
               ),
-              Text(_count(summary.count, 'pasaje cobrado', 'pasajes cobrados'), style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.silver)),
               const SizedBox(height: 18),
-              Sparkline(values: summary.cumulative, semanticLabel: 'Gráfica del dinero acumulado durante el día'),
+              Sparkline(values: summary.cumulative, semanticLabel: 'Gráfica del dinero acumulado durante el día', color: AppColors.pink),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppDates.hourLabel(0), style: text.bodySmall?.copyWith(color: AppColors.grey)),
+                  Text(AppDates.hourLabel(12), style: text.bodySmall?.copyWith(color: AppColors.grey)),
+                  Text(AppDates.hourLabel(23), style: text.bodySmall?.copyWith(color: AppColors.grey)),
+                ],
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        Text('Por chofer', style: text.titleLarge),
-        RankedBars(items: [for (final r in summary.byDriver) RankedItem(name: r.name, cents: r.totalCents, caption: _count(r.count, 'pasajero', 'pasajeros'))]),
-        const SizedBox(height: 16),
-        Text('Por unidad', style: text.titleLarge),
-        RankedBars(items: [for (final r in summary.byUnit) RankedItem(name: r.name, cents: r.totalCents, caption: _count(r.count, 'pasajero', 'pasajeros'))]),
-        const SizedBox(height: 24),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(child: MiniStat(icon: Icons.confirmation_number_rounded, label: summary.count == 1 ? 'Pasaje' : 'Pasajes', value: '${summary.count}')),
+            const SizedBox(width: 10),
+            Expanded(child: MiniStat(icon: Icons.groups_rounded, label: summary.byDriver.length == 1 ? 'Chofer' : 'Choferes', value: '${summary.byDriver.length}')),
+            const SizedBox(width: 10),
+            Expanded(child: MiniStat(icon: Icons.directions_bus_rounded, label: summary.byUnit.length == 1 ? 'Unidad' : 'Unidades', value: '${summary.byUnit.length}')),
+          ],
+        ),
+        const SizedBox(height: 28),
+        const SectionLabel('Por chofer'),
+        AppCard(
+          child: RankedBars(items: [for (final r in summary.byDriver) RankedItem(name: r.name, cents: r.totalCents, caption: _count(r.count, 'pasajero', 'pasajeros'))]),
+        ),
+        const SizedBox(height: 28),
+        const SectionLabel('Por unidad'),
+        AppCard(
+          child: RankedBars(items: [for (final r in summary.byUnit) RankedItem(name: r.name, cents: r.totalCents, caption: _count(r.count, 'pasajero', 'pasajeros'))]),
+        ),
+        const SizedBox(height: 28),
         AppButton(
           label: 'Ver todos los cobros',
           icon: Icons.receipt_long_rounded,

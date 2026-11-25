@@ -1,3 +1,4 @@
+import { uniqueViolationOf } from "../db/errors.js";
 import { badRequest, conflict, notFound } from "../lib/errors.js";
 
 export function ownerService({ users, units, settings, vault, auth, config }) {
@@ -10,12 +11,23 @@ export function ownerService({ users, units, settings, vault, auth, config }) {
   const driverView = ({ id, name, login, active }) => ({ id, name, login, active });
   const unitView = (u) => ({ ...u, ownerId: undefined, qrContent: `${config.publicBaseUrl}/u/${u.code}` });
 
+  // Helpers sobre un `settings` ya leído: permiten consultar la base UNA vez por operación.
+  const canChargeWith = (s) => !!s.clabe && !!s.peyKeyEnc;
+  const credentialsOf = (s) => ({
+    apiKey: s.peyKeyEnc ? vault.decrypt(s.peyKeyEnc) : null,
+    apiSecret: s.peySecretEnc ? vault.decrypt(s.peySecretEnc) : null,
+  });
+
   return {
+    canChargeWith,
+    credentialsOf,
     getSettings: (ownerId) => settings.get(ownerId),
-    settingsView: (ownerId) => view(settings.get(ownerId)),
-    saveSettings(ownerId, { businessName, clabe, peyApiKey, peyApiSecret }) {
+    async settingsView(ownerId) {
+      return view(await settings.get(ownerId));
+    },
+    async saveSettings(ownerId, { businessName, clabe, peyApiKey, peyApiSecret }) {
       return view(
-        settings.save(ownerId, {
+        await settings.save(ownerId, {
           businessName,
           clabe,
           peyKeyEnc: peyApiKey ? vault.encrypt(peyApiKey) : undefined,
@@ -24,35 +36,42 @@ export function ownerService({ users, units, settings, vault, auth, config }) {
         }),
       );
     },
-    getPeyCredentials(ownerId) {
-      const s = settings.get(ownerId);
-      return {
-        apiKey: s.peyKeyEnc ? vault.decrypt(s.peyKeyEnc) : null,
-        apiSecret: s.peySecretEnc ? vault.decrypt(s.peySecretEnc) : null,
-      };
+    async getPeyCredentials(ownerId) {
+      return credentialsOf(await settings.get(ownerId));
     },
     /** Un dueño puede cobrar si tiene CLABE y credenciales (en modo demo basta con eso, sin validar con pey). */
-    canCharge(ownerId) {
-      const s = settings.get(ownerId);
-      return !!s.clabe && !!s.peyKeyEnc;
+    async canCharge(ownerId) {
+      return canChargeWith(await settings.get(ownerId));
     },
 
-    listUnits: (ownerId) => units.list(ownerId).map(unitView),
-    createUnit: (ownerId, data) => unitView(units.create(ownerId, data)),
-    updateUnit(ownerId, id, data) {
-      if (!units.findOwned(ownerId, id)) throw notFound("No encontramos esa unidad.");
-      return unitView(units.update(id, data));
+    async listUnits(ownerId) {
+      return (await units.list(ownerId)).map(unitView);
+    },
+    async createUnit(ownerId, data) {
+      return unitView(await units.create(ownerId, data));
+    },
+    async updateUnit(ownerId, id, data) {
+      if (!(await units.findOwned(ownerId, id))) throw notFound("No encontramos esa unidad.");
+      return unitView(await units.update(id, data));
     },
 
-    listDrivers: (ownerId) => users.listDrivers(ownerId).map(driverView),
+    async listDrivers(ownerId) {
+      return (await users.listDrivers(ownerId)).map(driverView);
+    },
     async createDriver(ownerId, { name, login, pin }) {
-      if (users.findByLogin(login)) throw conflict("Ese usuario ya existe. Prueba con otro.");
-      return driverView(users.create({ role: "driver", ownerId, name, login, secretHash: await auth.hash(pin) }));
+      if (await users.findByLogin(login)) throw conflict("Ese usuario ya existe. Prueba con otro.");
+      const secretHash = await auth.hash(pin);
+      try {
+        return driverView(await users.create({ role: "driver", ownerId, name, login, secretHash }));
+      } catch (err) {
+        if (uniqueViolationOf(err) === "uq_users_login") throw conflict("Ese usuario ya existe. Prueba con otro.");
+        throw err;
+      }
     },
     async updateDriver(ownerId, id, { name, active, pin }) {
-      if (!users.findDriver(ownerId, id)) throw notFound("No encontramos a ese chofer.");
+      if (!(await users.findDriver(ownerId, id))) throw notFound("No encontramos a ese chofer.");
       if (name === undefined && active === undefined && pin === undefined) throw badRequest("No hay nada que cambiar.");
-      return driverView(users.update(id, { name, active, secretHash: pin ? await auth.hash(pin) : undefined }));
+      return driverView(await users.update(id, { name, active, secretHash: pin ? await auth.hash(pin) : undefined }));
     },
   };
 }

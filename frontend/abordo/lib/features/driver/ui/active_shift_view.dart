@@ -5,6 +5,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/voice_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_button.dart';
@@ -14,7 +15,7 @@ import '../../../core/widgets/stat_tile.dart';
 import '../domain/driver_models.dart';
 import '../state/driver_providers.dart';
 
-/// Turno en marcha: total del día, último cobro y aviso de voz.
+/// Turno en marcha: último cobro, aviso de voz y lista de cobros recientes.
 /// Mantiene la pantalla encendida para que el aviso nunca se pierda.
 class ActiveShiftView extends ConsumerStatefulWidget {
   const ActiveShiftView({super.key, required this.shift});
@@ -47,6 +48,7 @@ class _ActiveShiftViewState extends ConsumerState<ActiveShiftView> {
       message: 'Llevas ${Money.format(s.amountCents)} en ${s.count} ${s.count == 1 ? 'cobro' : 'cobros'}.',
       confirmLabel: 'Sí, terminar',
       danger: true,
+      icon: Icons.stop_circle_outlined,
     );
     if (!ok || !mounted) return;
     setState(() => _ending = true);
@@ -62,18 +64,17 @@ class _ActiveShiftViewState extends ConsumerState<ActiveShiftView> {
 
   Future<void> _showSummary(ShiftState summary) => showDialog<void>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Turno terminado'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              StatTile(label: 'Cobraste', value: Money.format(summary.amountCents), caption: '${summary.count} pasajeros'),
-              const SizedBox(height: 12),
-              const Text('Tu dueño ya ve este cuadre.'),
-            ],
+        builder: (ctx) => AppDialog(
+          icon: Icons.check_rounded,
+          iconColor: Colors.white,
+          iconBackground: AppColors.success,
+          title: 'Turno terminado',
+          message: 'Tu dueño ya ve este cuadre.',
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+            decoration: BoxDecoration(color: ctx.palette.field, borderRadius: BorderRadius.circular(Dimens.rMd)),
+            child: Center(child: StatTile(label: 'Cobraste', value: Money.format(summary.amountCents), caption: '${summary.count} ${summary.count == 1 ? 'pasajero' : 'pasajeros'}')),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           actions: [AppButton(label: 'Listo', onPressed: () => Navigator.pop(ctx))],
         ),
       );
@@ -82,22 +83,29 @@ class _ActiveShiftViewState extends ConsumerState<ActiveShiftView> {
   Widget build(BuildContext context) {
     final s = widget.shift;
     final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
     final voice = ref.watch(voiceEnabledProvider);
     final last = s.recent.isEmpty ? null : s.recent.first;
+    final older = s.recent.skip(1).toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppCard(
-          color: last == null ? null : AppColors.success.withOpacity(.16),
+          color: last == null ? null : p.successSoft,
+          padding: const EdgeInsets.all(20),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: Row(
               key: ValueKey(last?.seq ?? 0),
               children: [
-                Icon(last == null ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded, size: 44, color: last == null ? scheme.onSurfaceVariant : AppColors.success),
-                const SizedBox(width: 14),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: last == null ? p.field : AppColors.success),
+                  child: Icon(last == null ? Icons.hourglass_empty_rounded : Icons.check_rounded, size: 30, color: last == null ? p.muted : Colors.white),
+                ),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Semantics(
                     liveRegion: true,
@@ -106,8 +114,10 @@ class _ActiveShiftViewState extends ConsumerState<ActiveShiftView> {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Pagó ${Money.format(last.amountCents)}', style: text.headlineSmall),
-                              Text('Hoy a las ${AppDates.time(last.paidAt)}', style: text.bodyLarge?.copyWith(color: scheme.onSurfaceVariant)),
+                              Text('ÚLTIMO COBRO', style: text.labelSmall?.copyWith(color: p.success)),
+                              const SizedBox(height: 2),
+                              Text('Pagó ${Money.format(last.amountCents)}', style: tabular(text.headlineSmall)),
+                              Text('Hoy a las ${AppDates.time(last.paidAt)}', style: text.bodyMedium?.copyWith(color: p.muted)),
                             ],
                           ),
                   ),
@@ -116,33 +126,55 @@ class _ActiveShiftViewState extends ConsumerState<ActiveShiftView> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         AppCard(
           onTap: () => ref.read(voiceEnabledProvider.notifier).set(!voice),
           semanticLabel: 'Aviso de voz ${voice ? 'encendido' : 'apagado'}. Toca para cambiar.',
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           child: Row(
             children: [
-              Icon(voice ? Icons.volume_up_rounded : Icons.volume_off_rounded, size: 34),
+              IconTile(icon: voice ? Icons.volume_up_rounded : Icons.volume_off_rounded, size: 44),
               const SizedBox(width: 14),
-              Expanded(child: Text('Aviso de voz: ${voice ? 'Encendido' : 'Apagado'}', style: text.titleMedium)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Aviso de voz', style: text.titleMedium),
+                    Text(voice ? 'Dice cada cobro en voz alta' : 'Apagado', style: text.bodySmall?.copyWith(color: p.muted)),
+                  ],
+                ),
+              ),
               ExcludeSemantics(child: Switch(value: voice, onChanged: (v) => ref.read(voiceEnabledProvider.notifier).set(v))),
             ],
           ),
         ),
-        if (s.recent.length > 1) ...[
-          const SizedBox(height: 24),
-          Text('Últimos cobros', style: text.titleLarge),
-          const SizedBox(height: 8),
-          for (final p in s.recent.skip(1))
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.check_rounded, color: AppColors.success),
-              title: Text(Money.format(p.amountCents), style: text.titleMedium),
-              trailing: Text(AppDates.time(p.paidAt), style: text.bodyLarge),
+        if (older.isNotEmpty) ...[
+          const SizedBox(height: 32),
+          const SectionLabel('Cobros anteriores'),
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            child: Column(
+              children: [
+                for (var i = 0; i < older.length; i++) ...[
+                  if (i > 0) Divider(color: p.border),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 22, color: p.success),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(Money.format(older[i].amountCents), style: tabular(text.titleMedium))),
+                        Text(AppDates.time(older[i].paidAt), style: text.bodyMedium?.copyWith(color: p.muted)),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
+          ),
         ],
-        const SizedBox(height: 28),
-        AppButton(label: 'Terminar turno', icon: Icons.stop_circle_outlined, kind: ButtonKind.danger, loading: _ending, onPressed: _end),
+        const SizedBox(height: 32),
+        AppButton(label: 'Terminar turno', icon: Icons.stop_circle_outlined, kind: ButtonKind.dangerSoft, loading: _ending, onPressed: _end),
       ],
     );
   }

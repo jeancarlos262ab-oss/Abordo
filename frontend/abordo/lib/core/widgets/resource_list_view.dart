@@ -38,21 +38,22 @@ class ResourceListView<T> extends StatelessWidget {
               : RefreshIndicator(
                   onRefresh: onRefresh,
                   child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 8, Dimens.pagePadding, 110),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 4, Dimens.pagePadding, 120),
                     itemCount: items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: Dimens.gap),
+                    separatorBuilder: (_, __) => const SizedBox(height: Dimens.gap + 2),
                     itemBuilder: (ctx, i) => itemBuilder(ctx, items[i]),
                   ),
                 ),
         ),
         if (value.valueOrNull?.isNotEmpty ?? false)
           Positioned(
-            right: 20,
+            right: Dimens.pagePadding,
             bottom: 20,
             child: FloatingActionButton.extended(
               onPressed: onAdd,
-              icon: const Icon(Icons.add_rounded, size: 30),
-              label: Text(addLabel, style: Theme.of(context).textTheme.labelLarge),
+              icon: const Icon(Icons.add_rounded, size: 26),
+              label: Text(addLabel, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF161314))),
             ),
           ),
       ],

@@ -3,7 +3,7 @@ import { after, before, describe, it } from "node:test";
 import { createHmac } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
-import { openDatabase } from "../src/db/index.js";
+import { createTestDatabase } from "./helpers/db.js";
 import { dayRangeUtc, hourMx, todayMx } from "../src/lib/time.js";
 
 process.env.NODE_ENV = "test";
@@ -20,11 +20,11 @@ const call = async (method, path, { token, body } = {}) => {
 };
 
 before(async () => {
-  db = openDatabase(":memory:");
+  db = await createTestDatabase();
   server = createApp({ config, db, log: { error() {} } }).listen(0);
   base = `http://127.0.0.1:${server.address().port}`;
 });
-after(() => { server.close(); db.close(); });
+after(async () => { server.close(); await db.close(); });
 
 describe("time", () => {
   it("calcula el día en hora de México", () => {
@@ -45,7 +45,7 @@ describe("flujo completo ABORDO", () => {
     assert.equal(s.status, 200);
     assert.deepEqual([s.body.peyConfigured, s.body.peyKeyHint], [true, "••••1234"]);
     assert.ok(!JSON.stringify(s.body).includes("abcdef"), "no debe regresar la llave");
-    const raw = db.prepare("SELECT pey_api_key_enc FROM owner_settings").get().pey_api_key_enc;
+    const raw = (await db.query("SELECT pey_api_key_enc FROM owner_settings")).rows[0].pey_api_key_enc;
     assert.ok(!raw.includes("abcdef"), "la llave debe estar cifrada en la base");
   });
 
@@ -130,13 +130,87 @@ describe("webhook de pey (modo mock)", () => {
 describe("webhook de pey (modo live)", () => {
   it("exige firma válida", async () => {
     const liveCfg = loadConfig({ NODE_ENV: "test", PEY_MODE: "live", PEY_WEBHOOK_SECRET: "s3cret" });
-    const srv = createApp({ config: liveCfg, db: openDatabase(":memory:"), log: { error() {} } }).listen(0);
+    const liveDb = await createTestDatabase();
+    const srv = createApp({ config: liveCfg, db: liveDb, log: { error() {} } }).listen(0);
     const url = `http://127.0.0.1:${srv.address().port}/api/webhooks/pey`;
     const body = JSON.stringify({ id: "abc", estatus: "PAID" });
     try {
       assert.equal((await fetch(url, { method: "POST", body, headers: { "x-pey-signature": "mala" } })).status, 401);
       const sig = createHmac("sha256", "s3cret").update(body).digest("hex");
       assert.equal((await fetch(url, { method: "POST", body, headers: { "x-pey-signature": sig } })).status, 204);
-    } finally { srv.close(); }
+    } finally { srv.close(); await liveDb.close(); }
+  });
+});
+
+describe("concurrencia y bordes (Postgres)", () => {
+  let owner, d1, d2, u1, u2;
+  const sql = async (q, p) => (await db.query(q, p)).rows;
+
+  before(async () => {
+    owner = (await call("POST", "/api/auth/register-owner", { body: { name: "Dueño Dos", login: "dueno2", secret: "contraseña-segura" } })).body.token;
+    await call("PUT", "/api/owner/settings", { token: owner, body: { clabe: "012345678901234567", peyApiKey: "pey_key_abcdef1234", peyApiSecret: "pey_secret_123456" } });
+    u1 = (await call("POST", "/api/owner/units", { token: owner, body: { label: "U1", route: "R1", fareCents: 1000 } })).body;
+    u2 = (await call("POST", "/api/owner/units", { token: owner, body: { label: "U2", route: "R2", fareCents: 2000 } })).body;
+    for (const login of ["cho1", "cho2"]) await call("POST", "/api/owner/drivers", { token: owner, body: { name: `Chofer ${login}`, login, pin: "1234" } });
+    d1 = (await call("POST", "/api/auth/login", { body: { login: "cho1", secret: "1234" } })).body.token;
+    d2 = (await call("POST", "/api/auth/login", { body: { login: "cho2", secret: "1234" } })).body.token;
+  });
+
+  it("registros simultáneos con el mismo usuario: uno gana, el otro recibe 409 (no 500)", async () => {
+    const body = { name: "Carrera", login: "Carrera", secret: "contraseña-segura" };
+    const rs = await Promise.all([1, 2, 3, 4].map(() => call("POST", "/api/auth/register-owner", { body })));
+    assert.deepEqual(rs.map((r) => r.status).sort(), [201, 409, 409, 409]);
+    assert.equal((await call("POST", "/api/auth/login", { body: { login: "CARRERA", secret: "contraseña-segura" } })).status, 200); // login sin distinguir mayúsculas
+  });
+
+  it("turnos simultáneos: un chofer no abre dos y una unidad no tiene dos choferes", async () => {
+    const same = await Promise.all([1, 2, 3].map(() => call("POST", "/api/driver/shift", { token: d1, body: { unitId: u1.id } })));
+    assert.deepEqual(same.map((r) => r.status).sort(), [201, 409, 409]);
+    const rival = await Promise.all([call("POST", "/api/driver/shift", { token: d2, body: { unitId: u1.id } }), call("POST", "/api/driver/shift", { token: d2, body: { unitId: u1.id } })]);
+    assert.ok(rival.every((r) => r.status === 409));
+    assert.equal((await sql("SELECT COUNT(*)::int AS n FROM shifts WHERE ended_at IS NULL AND unit_id = $1", [u1.id]))[0].n, 1);
+  });
+
+  it("pagos simultáneos: consecutivos únicos y sin saltos; un mismo cobro se paga una sola vez", async () => {
+    const created = await Promise.all(Array.from({ length: 12 }, () => call("POST", `/api/public/units/${u1.code}/charges`, { body: {} })));
+    assert.ok(created.every((c) => c.status === 201));
+    const ids = created.map((c) => c.body.id);
+    // 3 consultas simultáneas por cobro: webhook y sondeo "a la vez"
+    const polled = await Promise.all(ids.flatMap((id) => [1, 2, 3].map(() => call("GET", `/api/public/charges/${id}`))));
+    assert.ok(polled.every((r) => r.body.status === "paid"));
+    const seqs = (await sql("SELECT paid_seq FROM charges WHERE status='paid' ORDER BY paid_seq")).map((r) => r.paid_seq);
+    assert.equal(new Set(seqs).size, seqs.length, "paid_seq repetido");
+    assert.deepEqual(seqs, Array.from({ length: seqs.length }, (_, i) => i + 1), "paid_seq con huecos");
+    const mine = await call("GET", "/api/driver/shift/payments?afterSeq=0", { token: d1 });
+    assert.equal(mine.body.payments.length, 12);
+  });
+
+  it("ids fuera de rango dan 400/404, no 500", async () => {
+    assert.equal((await call("POST", "/api/driver/shift", { token: d2, body: { unitId: 99999999999 } })).status, 400);
+    assert.equal((await call("GET", "/api/driver/shift/payments?afterSeq=99999999999", { token: d1 })).status, 400);
+    assert.equal((await call("PATCH", "/api/owner/units/99999999999", { token: owner, body: { active: false } })).status, 400);
+    assert.equal((await call("PATCH", "/api/owner/units/987654", { token: owner, body: { active: false } })).status, 404);
+    assert.equal((await call("GET", "/api/owner/charges?offset=99999999999", { token: owner })).status, 400);
+    assert.equal((await call("GET", "/api/public/units/99999999")).status, 404);
+  });
+
+  it("fechas imposibles dan 400, no 500", async () => {
+    assert.equal((await call("GET", "/api/owner/reports/summary?date=2026-02-31", { token: owner })).status, 400);
+    assert.equal((await call("GET", "/api/owner/reports/summary?date=2026-13-01", { token: owner })).status, 400);
+  });
+
+  it("historial: filtros y paginación en SQL conservan el total", async () => {
+    const today = todayMx();
+    const all = await call("GET", `/api/owner/charges?date=${today}`, { token: owner });
+    assert.equal(all.body.total, 12);
+    const page = await call("GET", `/api/owner/charges?date=${today}&limit=5&offset=10`, { token: owner });
+    assert.deepEqual([page.body.total, page.body.items.length], [12, 2]);
+    const beyond = await call("GET", `/api/owner/charges?date=${today}&offset=500`, { token: owner });
+    assert.deepEqual([beyond.body.total, beyond.body.items.length], [12, 0]);
+    assert.equal((await call("GET", `/api/owner/charges?date=${today}&unitId=${u2.id}`, { token: owner })).body.total, 0);
+    assert.equal((await call("GET", `/api/owner/charges?date=${today}&unitId=${u1.id}`, { token: owner })).body.total, 12);
+    const items = all.body.items;
+    assert.ok(items.every((i, k) => k === 0 || items[k - 1].paidAt >= i.paidAt), "orden descendente");
+    assert.match(items[0].paidAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/); // sigue siendo ISO-8601 UTC
   });
 });

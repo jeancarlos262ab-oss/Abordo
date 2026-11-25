@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { dateStr, pesosCents, validate, wrap } from "../lib/http.js";
+import { INT4_MAX, dateStr, pesosCents, validate, wrap } from "../lib/http.js";
 import { todayMx } from "../lib/time.js";
 
-const id = z.object({ id: z.coerce.number().int().positive() });
+const id = z.object({ id: z.coerce.number().int().positive().max(INT4_MAX) });
 const unitFields = { label: z.string().trim().min(1).max(40), route: z.string().trim().min(1).max(40), fareCents: pesosCents };
 const driverFields = {
   name: z.string().trim().min(2).max(80),
@@ -14,7 +14,7 @@ export function ownerRoutes({ ownerService, reportService, config }) {
   const r = Router();
   const owner = (req) => req.user.id;
 
-  r.get("/settings", (req, res) => res.json(ownerService.settingsView(owner(req))));
+  r.get("/settings", wrap(async (req, res) => res.json(await ownerService.settingsView(owner(req)))));
   r.put(
     "/settings",
     validate({
@@ -25,18 +25,18 @@ export function ownerRoutes({ ownerService, reportService, config }) {
         peyApiSecret: z.string().trim().min(8).max(200).optional(),
       }),
     }),
-    (req, res) => res.json(ownerService.saveSettings(owner(req), req.valid.body)),
+    wrap(async (req, res) => res.json(await ownerService.saveSettings(owner(req), req.valid.body))),
   );
 
-  r.get("/units", (req, res) => res.json({ units: ownerService.listUnits(owner(req)) }));
-  r.post("/units", validate({ body: z.object({ ...unitFields, fareCents: unitFields.fareCents.default(config.defaultFareCents) }) }), (req, res) =>
-    res.status(201).json(ownerService.createUnit(owner(req), req.valid.body)),
-  );
-  r.patch("/units/:id", validate({ params: id, body: z.object({ ...unitFields, active: z.boolean() }).partial() }), (req, res) =>
-    res.json(ownerService.updateUnit(owner(req), req.valid.params.id, req.valid.body)),
-  );
+  r.get("/units", wrap(async (req, res) => res.json({ units: await ownerService.listUnits(owner(req)) })));
+  r.post("/units", validate({ body: z.object({ ...unitFields, fareCents: unitFields.fareCents.default(config.defaultFareCents) }) }), wrap(async (req, res) =>
+    res.status(201).json(await ownerService.createUnit(owner(req), req.valid.body)),
+  ));
+  r.patch("/units/:id", validate({ params: id, body: z.object({ ...unitFields, active: z.boolean() }).partial() }), wrap(async (req, res) =>
+    res.json(await ownerService.updateUnit(owner(req), req.valid.params.id, req.valid.body)),
+  ));
 
-  r.get("/drivers", (req, res) => res.json({ drivers: ownerService.listDrivers(owner(req)) }));
+  r.get("/drivers", wrap(async (req, res) => res.json({ drivers: await ownerService.listDrivers(owner(req)) })));
   r.post(
     "/drivers",
     validate({ body: z.object({ ...driverFields, login: z.string().trim().min(3).max(40).regex(/^[\w.@-]+$/, "Usa letras, números, punto o guion") }) }),
@@ -46,24 +46,24 @@ export function ownerRoutes({ ownerService, reportService, config }) {
     res.json(await ownerService.updateDriver(owner(req), req.valid.params.id, req.valid.body)),
   ));
 
-  r.get("/reports/summary", validate({ query: z.object({ date: dateStr.default(() => todayMx()) }) }), (req, res) =>
-    res.json(reportService.summary(owner(req), req.valid.query.date)),
-  );
+  r.get("/reports/summary", validate({ query: z.object({ date: dateStr.default(() => todayMx()) }) }), wrap(async (req, res) =>
+    res.json(await reportService.summary(owner(req), req.valid.query.date)),
+  ));
   r.get(
     "/charges",
     validate({
       query: z.object({
         date: dateStr.default(() => todayMx()),
-        unitId: z.coerce.number().int().optional(),
-        driverId: z.coerce.number().int().optional(),
+        unitId: z.coerce.number().int().min(-INT4_MAX).max(INT4_MAX).optional(),
+        driverId: z.coerce.number().int().min(-INT4_MAX).max(INT4_MAX).optional(),
         limit: z.coerce.number().int().min(1).max(100).default(50),
-        offset: z.coerce.number().int().min(0).default(0),
+        offset: z.coerce.number().int().min(0).max(INT4_MAX).default(0),
       }),
     }),
-    (req, res) => {
+    wrap(async (req, res) => {
       const { date, ...filters } = req.valid.query;
-      res.json(reportService.history(owner(req), date, filters));
-    },
+      res.json(await reportService.history(owner(req), date, filters));
+    }),
   );
   return r;
 }

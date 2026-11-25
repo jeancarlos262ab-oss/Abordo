@@ -5,7 +5,7 @@ import { wrap } from "../lib/http.js";
 export function webhookRoutes({ pey, chargeService }) {
   const r = Router();
   r.post("/pey", express.raw({ type: "*/*", limit: "100kb" }), wrap(async (req, res) => {
-    chargeService.applyWebhook(pey.parseWebhook(req.body, req.headers["x-pey-signature"]));
+    await chargeService.applyWebhook(pey.parseWebhook(req.body, req.headers["x-pey-signature"]));
     res.status(204).end();
   }));
   return r;
