@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/services/qr_pdf.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/utils/validators.dart';
@@ -10,11 +12,10 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/labeled_field.dart';
-import '../../../core/widgets/resource_list_view.dart';
-import '../../../core/widgets/status_chip.dart';
 import '../../../core/widgets/submit_mixin.dart';
 import '../domain/owner_models.dart';
 import '../state/owner_providers.dart';
+import 'owner_widgets.dart';
 import 'unit_qr_page.dart';
 
 Future<void> _openForm(BuildContext context, {OwnerUnit? unit}) => showFormSheet<void>(
@@ -27,68 +28,143 @@ class UnitsTab extends ConsumerWidget {
   const UnitsTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ResourceListView<OwnerUnit>(
+  Widget build(BuildContext context, WidgetRef ref) => OwnerList<OwnerUnit>(
         value: ref.watch(unitsProvider),
         onRefresh: () async => ref.invalidate(unitsProvider),
-        emptyIcon: Icons.directions_bus_outlined,
+        emptyIcon: AppIcons.busOutlined,
         emptyMessage: 'Aún no tienes unidades. Agrega la primera para generar su código QR.',
         addLabel: 'Agregar unidad',
         onAdd: () => _openForm(context),
+        header: (ctx, items) {
+          final on = items.where((u) => u.active).length;
+          final off = items.length - on;
+          return OwnerListHeader(
+            title: '${items.length} ${items.length == 1 ? 'unidad' : 'unidades'}',
+            subtitle: off == 0
+                ? (on == 1 ? '1 cobrando ahora' : '$on cobrando ahora')
+                : '$on cobrando · $off ${off == 1 ? 'apagada' : 'apagadas'}',
+          );
+        },
         itemBuilder: (ctx, u) => _UnitCard(unit: u),
       );
 }
 
-class _UnitCard extends StatelessWidget {
+/// Una unidad como fila abierta: el vehículo con su nombre y ruta, el QR con el número y el precio,
+/// y tres acciones rápidas (imprimir, ver QR, editar). Todo directo sobre el fondo.
+class _UnitCard extends StatefulWidget {
   const _UnitCard({required this.unit});
   final OwnerUnit unit;
 
   @override
+  State<_UnitCard> createState() => _UnitCardState();
+}
+
+class _UnitCardState extends State<_UnitCard> {
+  bool _printing = false;
+
+  Future<void> _print() async {
+    setState(() => _printing = true);
+    try {
+      await QrPdf.printOrSave(widget.unit);
+    } catch (_) {
+      if (mounted) showMessage(context, 'No pudimos preparar el PDF. Intenta de nuevo.', error: true);
+    } finally {
+      if (mounted) setState(() => _printing = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final unit = widget.unit;
     final text = Theme.of(context).textTheme;
-    final p = context.palette;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Dimens.rSm), border: Border.all(color: p.border)),
-                child: ExcludeSemantics(child: QrImageView(data: unit.qrContent, size: 64, backgroundColor: Colors.white, padding: EdgeInsets.zero)),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(unit.label, style: text.titleLarge),
-                    Text(unit.route, style: text.bodyMedium?.copyWith(color: p.muted)),
-                    const SizedBox(height: 8),
-                    Text('${Money.format(unit.fareCents)} · Código ${unit.spacedCode}', style: tabular(text.titleSmall)),
-                  ],
+    final muted = context.palette.muted;
+    return Semantics(
+      container: true,
+      label: '${unit.label}, ${unit.route}, pasaje de ${Money.spoken(unit.fareCents)}, ${unit.active ? 'cobrando' : 'apagada'}',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      StateTag(label: unit.active ? 'Cobrando' : 'Apagada', on: unit.active),
+                      const SizedBox(height: 8),
+                      Text(unit.label, style: text.headlineSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(AppIcons.path, size: 15, color: muted),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(unit.route, style: text.bodyMedium?.copyWith(color: muted), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Align(alignment: Alignment.centerLeft, child: StatusChip(label: unit.active ? 'Cobrando' : 'Apagada', good: unit.active)),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: 'Ver QR',
-                  icon: Icons.qr_code_2_rounded,
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => UnitQrPage(unit: unit))),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // El QR sí lleva fondo blanco: es lo que permite que la cámara lo lea.
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Dimens.rSm)),
+                  child: ExcludeSemantics(child: QrImageView(data: unit.qrContent, size: 84, backgroundColor: Colors.white, padding: EdgeInsets.zero)),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: AppButton(label: 'Editar', icon: Icons.edit_rounded, kind: ButtonKind.secondary, onPressed: () => _openForm(context, unit: unit))),
-            ],
-          ),
-        ],
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('PASAJE', style: text.labelSmall?.copyWith(color: muted)),
+                      Text(Money.format(unit.fareCents), style: tabular(text.headlineMedium)),
+                      const SizedBox(height: 8),
+                      Text('NÚMERO DE LA UNIDAD', style: text.labelSmall?.copyWith(color: muted)),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(unit.spacedCode, style: tabular(text.titleLarge?.copyWith(fontSize: 20, letterSpacing: 2.5))),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('Los pasajeros escanean el QR o escriben este número para pagar.', style: text.bodySmall?.copyWith(color: muted)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: QuickAction(
+                    icon: AppIcons.printer,
+                    label: 'Imprimir',
+                    semanticLabel: 'Imprimir QR en PDF',
+                    primary: true,
+                    loading: _printing,
+                    onTap: _print,
+                  ),
+                ),
+                Expanded(
+                  child: QuickAction(
+                    icon: AppIcons.qr,
+                    label: 'Ver QR',
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => UnitQrPage(unit: unit))),
+                  ),
+                ),
+                Expanded(child: QuickAction(icon: AppIcons.pencil, label: 'Editar', onTap: () => _openForm(context, unit: unit))),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -140,11 +216,11 @@ class _UnitFormState extends ConsumerState<_UnitForm> with SubmitMixin<_UnitForm
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LabeledField(label: 'Nombre de la unidad', hint: 'Unidad 14', icon: Icons.directions_bus_rounded, controller: _label, validator: Validators.notEmpty('el nombre')),
-          LabeledField(label: 'Ruta', hint: 'Ruta 52', icon: Icons.route_rounded, controller: _route, validator: Validators.notEmpty('la ruta')),
+          LabeledField(label: 'Nombre de la unidad', hint: 'Unidad 14', icon: AppIcons.bus, controller: _label, validator: Validators.notEmpty('el nombre')),
+          LabeledField(label: 'Ruta', hint: 'Ruta 52', icon: AppIcons.path, controller: _route, validator: Validators.notEmpty('la ruta')),
           LabeledField(
             label: 'Precio del pasaje (pesos)',
-            icon: Icons.attach_money_rounded,
+            icon: AppIcons.dollar,
             controller: _fare,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
@@ -173,7 +249,7 @@ class _UnitFormState extends ConsumerState<_UnitForm> with SubmitMixin<_UnitForm
             const SizedBox(height: 20),
           ],
           const SizedBox(height: 8),
-          AppButton(label: 'Guardar', icon: Icons.check_rounded, loading: busy, onPressed: _save),
+          AppButton(label: 'Guardar', icon: AppIcons.check, loading: busy, onPressed: _save),
         ],
       ),
     );

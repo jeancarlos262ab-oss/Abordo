@@ -17,8 +17,8 @@ class ApiClient {
             Dio(
               BaseOptions(
                 baseUrl: '${AppConfig.apiUrl}/api',
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 15),
+                connectTimeout: AppConfig.connectTimeout,
+                receiveTimeout: AppConfig.receiveTimeout,
                 contentType: Headers.jsonContentType,
               ),
             );
@@ -26,6 +26,16 @@ class ApiClient {
   final Dio _dio;
   final String? Function() _getToken;
   final void Function() _onUnauthorized;
+
+  /// Despierta el servidor (Render gratis se duerme) en cuanto abre la app, sin bloquear ni mostrar errores.
+  static Future<void> wakeServer() async {
+    try {
+      await Dio(BaseOptions(connectTimeout: AppConfig.connectTimeout, receiveTimeout: const Duration(seconds: 90)))
+          .get<Object?>('${AppConfig.apiUrl}/health');
+    } catch (_) {
+      // Es solo un calentamiento: si falla, la primera petición real reintentará.
+    }
+  }
 
   Future<Json> get(String path, {Json? query}) => _send('GET', path, query: query);
   Future<Json> post(String path, {Object? body}) => _send('POST', path, body: body ?? <String, dynamic>{});
@@ -60,11 +70,10 @@ class ApiClient {
       return ApiException(error['message'] as String, status: status, code: error['code'] as String?);
     }
     return switch (e.type) {
-      DioExceptionType.connectionError ||
-      DioExceptionType.connectionTimeout ||
-      DioExceptionType.sendTimeout ||
-      DioExceptionType.receiveTimeout =>
+      DioExceptionType.connectionError =>
         const ApiException('No hay conexión a internet. Revisa tu señal e intenta otra vez.'),
+      DioExceptionType.connectionTimeout || DioExceptionType.sendTimeout || DioExceptionType.receiveTimeout =>
+        const ApiException('El servidor tardó en responder. Intenta de nuevo en unos segundos.'),
       _ => ApiException('Algo salió mal. Intenta de nuevo.', status: status),
     };
   }

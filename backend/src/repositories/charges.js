@@ -4,7 +4,7 @@ const PAID_SEQ_LOCK = 727_002; // serializa la asignación del consecutivo de pa
 
 const toCharge = (r) =>
   r && {
-    id: r.id, ownerId: r.owner_id, unitId: r.unit_id, shiftId: r.shift_id, driverId: r.driver_id,
+    id: r.id, ownerId: r.owner_id, unitId: r.unit_id, shiftId: r.shift_id, driverId: r.driver_id, passengerId: r.passenger_id,
     amountCents: r.amount_cents, status: r.status, peyRef: r.pey_ref, qrPayload: r.qr_payload, payLink: r.pay_link,
     createdAt: iso(r.created_at), expiresAt: iso(r.expires_at), paidAt: iso(r.paid_at), paidSeq: r.paid_seq,
   };
@@ -26,9 +26,9 @@ export function chargesRepo(db) {
     findByPeyRef: (ref) => one("SELECT * FROM charges WHERE pey_ref = $1", [ref]),
     insert: (c) =>
       one(
-        `INSERT INTO charges (id, owner_id, unit_id, shift_id, driver_id, amount_cents, status, pey_ref, qr_payload, pay_link, expires_at)
-         VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9,$10) RETURNING *`,
-        [c.id, c.ownerId, c.unitId, c.shiftId, c.driverId, c.amountCents, c.peyRef, c.qrPayload, c.payLink, c.expiresAt],
+        `INSERT INTO charges (id, owner_id, unit_id, shift_id, driver_id, amount_cents, status, pey_ref, qr_payload, pay_link, expires_at, passenger_id)
+         VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9,$10,$11) RETURNING *`,
+        [c.id, c.ownerId, c.unitId, c.shiftId, c.driverId, c.amountCents, c.peyRef, c.qrPayload, c.payLink, c.expiresAt, c.passengerId ?? null],
       ),
     /**
      * Idempotente: solo la primera llamada cambia el estado y asigna el consecutivo de pago.
@@ -62,6 +62,29 @@ export function chargesRepo(db) {
     },
     recentPaidInShift: (shiftId, limit = 8) =>
       many("SELECT * FROM charges WHERE shift_id = $1 AND status = 'paid' ORDER BY paid_seq DESC LIMIT $2", [shiftId, limit]),
+
+    /**
+     * Historial del pasajero, del más reciente al más antiguo. Un cobro pendiente cuyo plazo ya venció
+     * se muestra como `expired` (nadie lo consultó, así que en la base sigue "pending").
+     */
+    async forPassenger(passengerId, limit) {
+      const { rows } = await db.query(
+        `SELECT c.id, c.amount_cents, c.created_at, u.label AS unit_label, u.route,
+                CASE WHEN c.status = 'pending' AND c.expires_at < now() THEN 'expired' ELSE c.status END AS status
+           FROM charges c JOIN units u ON u.id = c.unit_id
+          WHERE c.passenger_id = $1 ORDER BY c.created_at DESC, c.id LIMIT $2`,
+        [passengerId, limit],
+      );
+      return rows.map((r) => ({ id: r.id, status: r.status, amountCents: r.amount_cents, unitLabel: r.unit_label, route: r.route, createdAt: iso(r.created_at) }));
+    },
+    /** Total pagado por el pasajero en un rango UTC (el mes en curso). */
+    async passengerPaidTotal(passengerId, from, to) {
+      const r = first(await db.query(
+        "SELECT COALESCE(SUM(amount_cents), 0)::int AS total FROM charges WHERE passenger_id = $1 AND status = 'paid' AND paid_at >= $2 AND paid_at < $3",
+        [passengerId, from, to],
+      ));
+      return r.total;
+    },
 
     /** Cobros pagados de un dueño en un rango UTC, con nombres para reportes. */
     async paidInRange(ownerId, from, to) {

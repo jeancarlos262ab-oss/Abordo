@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 /// Cifra grande con su etiqueta. Se usa para el total del turno y del día.
 class StatTile extends StatelessWidget {
@@ -22,7 +23,7 @@ class StatTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (live) ...[Icon(Icons.circle, size: 10, color: Theme.of(context).colorScheme.primary), const SizedBox(width: 8)],
+              if (live) ...[Icon(AppIcons.dot, size: 10, color: Theme.of(context).colorScheme.primary), const SizedBox(width: 8)],
               Text(label, style: text.titleMedium?.copyWith(color: muted)),
             ],
           ),
@@ -52,10 +53,8 @@ class MiniStat extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         decoration: BoxDecoration(
-          color: p.card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: p.border),
-          boxShadow: p.cardShadow,
+          border: Border.all(color: p.outline, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

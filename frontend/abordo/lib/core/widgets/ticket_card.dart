@@ -6,9 +6,12 @@ import '../theme/app_theme.dart';
 /// Tarjeta tipo boleto: dos mitades separadas por una línea punteada con muescas semicirculares
 /// recortadas de verdad a los lados (se ve el fondo de la pantalla a través de ellas).
 class TicketCard extends StatelessWidget {
-  const TicketCard({super.key, required this.top, required this.bottom});
+  const TicketCard({super.key, required this.top, required this.bottom, this.strip});
   final Widget top;
   final Widget bottom;
+
+  /// Franja gris sobre el boleto (como el "origen ⇄ destino" de la referencia).
+  final Widget? strip;
 
   static const _notch = 12.0;
 
@@ -17,6 +20,15 @@ class TicketCard extends StatelessWidget {
     final p = context.palette;
     return Column(
         children: [
+          if (strip != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              decoration: BoxDecoration(color: p.field, borderRadius: BorderRadius.circular(Dimens.rLg)),
+              child: strip,
+            ),
+            const SizedBox(height: 8),
+          ],
           ClipPath(
             clipper: const _TicketClipper(top: true),
             child: Container(

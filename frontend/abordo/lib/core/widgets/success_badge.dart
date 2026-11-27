@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 /// Check grande que "salta" al aparecer, con halos que se expanden. Confirma el pago.
 class SuccessBadge extends StatelessWidget {
@@ -34,9 +35,8 @@ class SuccessBadge extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.success,
-                    boxShadow: [BoxShadow(color: AppColors.success.withOpacity(.4), blurRadius: 24, offset: const Offset(0, 10))],
                   ),
-                  child: Icon(Icons.check_rounded, size: size * .58, color: Colors.white),
+                  child: Icon(AppIcons.check, size: size * .58, color: Colors.white),
                 ),
               ),
             ],

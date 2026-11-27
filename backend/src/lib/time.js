@@ -18,3 +18,10 @@ export function hourMx(iso) {
 }
 
 export const nowIso = () => new Date().toISOString();
+
+/** Rango UTC (ISO) del mes calendario en curso en hora de México, hasta el inicio del mes siguiente. */
+export function monthRangeUtc(now = new Date()) {
+  const [y, m] = todayMx(now).split("-").map(Number);
+  const startUtc = (year, month) => new Date(Date.UTC(year, month - 1, 1) - MX_OFFSET_HOURS * HOUR).toISOString();
+  return { from: startUtc(y, m), to: m === 12 ? startUtc(y + 1, 1) : startUtc(y, m + 1) };
+}

@@ -7,7 +7,7 @@ import '../utils/motion.dart';
 
 /// Esquinas redondeadas tipo visor + línea de escaneo animada. Enmarca un QR (o la cámara).
 class ScanFrame extends StatefulWidget {
-  const ScanFrame({super.key, this.child, this.size, this.scanning = true, this.color = AppColors.pink});
+  const ScanFrame({super.key, this.child, this.size, this.scanning = true, this.color = AppColors.rose});
   final Widget? child;
   final double? size;
   final bool scanning;

@@ -29,6 +29,11 @@ class SessionController extends AsyncNotifier<Session?> {
     state = AsyncData(session);
   }
 
+  Future<void> registerPassenger({required String name, required String login, required String secret}) async {
+    final session = await _repo.registerPassenger(name: name.trim(), login: login.trim(), secret: secret);
+    state = AsyncData(session);
+  }
+
   Future<void> logout() async {
     await _repo.clear();
     state = const AsyncData(null);

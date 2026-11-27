@@ -12,12 +12,22 @@ abstract final class AppColors {
   static const pinkDeep = Color(0xFFE97FA7);
   static const paper = Color(0xFFF5F3F3);
 
-  static const success = Color(0xFF23915F);
-  static const danger = Color(0xFFD64545);
+  /// Asfalto de la portada (el de la carretera de día).
+  static const road = Color(0xFF231F20);
+
+  /// Rosa de Inter Miami (#F7B5CD): botones, iconos activos y acentos. Siempre con texto negro encima.
+  static const rose = Color(0xFFF7B5CD); // rosa de Inter Miami
+  static const roseLight = Color(0xFFFBD3E2);
+
+  /// Rosa Miami un poco más oscuro, para botones sobre el fondo rosa de las pantallas (se nota la diferencia).
+  static const roseButton = Color(0xFFEC96B8);
+
+  static const success = Color(0xFFB4155A); // rosa profundo (antes verde)
+  static const danger = Color(0xFF7A0F3A); // rosa vino (antes rojo)
 
   /// Versiones claras para usar encima de fondos oscuros (hero, snackbars).
-  static const successBright = Color(0xFF4CC38A);
-  static const dangerBright = Color(0xFFFF8A8A);
+  static const successBright = Color(0xFFFF8FB8);
+  static const dangerBright = Color(0xFFFF6B9A);
 }
 
 /// Colores semánticos que sí cambian entre tema claro y oscuro.
@@ -73,21 +83,21 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color shadow;
 
   static const light = AppPalette(
-    background: Color(0xFFF6F3F4),
+    background: Color(0xFFF7B5CD),
     card: Color(0xFFFFFFFF),
-    field: Color(0xFFEFEBEC),
-    border: Color(0xFFE7E2E4),
-    borderStrong: Color(0xFFB0A9AC),
+    field: Color(0xFFFBD3E2),
+    border: Color(0xFFEFC6D6),
+    borderStrong: Color(0xFFC9B5BF),
     text: Color(0xFF161314),
-    muted: Color(0xFF655E61),
-    success: Color(0xFF157A4D),
-    successSoft: Color(0xFFE2F4EA),
-    danger: Color(0xFFC62F34),
-    dangerSoft: Color(0xFFFCE8E8),
-    accent: Color(0xFFE97FA7),
-    accentSoft: Color(0xFFFDEAF1),
+    muted: Color(0xFF4A4346),
+    success: Color(0xFFB4155A),
+    successSoft: Color(0xFFFBD3E2),
+    danger: Color(0xFF7A0F3A),
+    dangerSoft: Color(0xFFF2A0BE),
+    accent: Color(0xFF231F20),
+    accentSoft: Color(0xFFFBD3E2),
     switchOff: Color(0xFFC9C2C5),
-    shadow: Color(0x14161314),
+    shadow: Color(0x1AD94F86),
   );
 
   static const dark = AppPalette(
@@ -98,23 +108,21 @@ class AppPalette extends ThemeExtension<AppPalette> {
     borderStrong: Color(0xFF6A6164),
     text: Color(0xFFF7F4F5),
     muted: Color(0xFFB3ACAF),
-    success: Color(0xFF4CC38A),
-    successSoft: Color(0xFF16342A),
-    danger: Color(0xFFFF8A8A),
-    dangerSoft: Color(0xFF3D1F21),
+    success: Color(0xFFFF8FB8),
+    successSoft: Color(0xFF3A2630),
+    danger: Color(0xFFE5407F),
+    dangerSoft: Color(0xFF4A1830),
     accent: Color(0xFFF7B5CD),
     accentSoft: Color(0xFF3A2630),
     switchOff: Color(0xFF4A4244),
     shadow: Color(0x00000000),
   );
 
-  /// Sombra suave de tarjetas (vacía en tema oscuro, donde manda el borde).
-  List<BoxShadow> get cardShadow => shadow.alpha == 0
-      ? const []
-      : [
-          BoxShadow(color: shadow, blurRadius: 24, offset: const Offset(0, 8)),
-          BoxShadow(color: shadow, blurRadius: 3, offset: const Offset(0, 1)),
-        ];
+  /// Borde de los contenedores: tinta al 32 %, igual que las pantallas del dueño (sin relleno blanco).
+  Color get outline => text.withOpacity(.32);
+
+  /// Sin sombras: las tarjetas se definen solo con borde.
+  List<BoxShadow> get cardShadow => const [];
 
   @override
   AppPalette copyWith({Color? background, Color? card}) => AppPalette(

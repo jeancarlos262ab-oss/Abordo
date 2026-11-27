@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_icons.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/labeled_field.dart';
-import '../../../core/widgets/resource_list_view.dart';
-import '../../../core/widgets/status_chip.dart';
 import '../../../core/widgets/submit_mixin.dart';
 import '../domain/owner_models.dart';
 import '../state/owner_providers.dart';
+import 'owner_widgets.dart';
 
 Future<void> _openForm(BuildContext context, {DriverItem? driver}) => showFormSheet<void>(
       context,
@@ -23,61 +25,103 @@ class DriversTab extends ConsumerWidget {
   const DriversTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ResourceListView<DriverItem>(
+  Widget build(BuildContext context, WidgetRef ref) => OwnerList<DriverItem>(
         value: ref.watch(driversProvider),
         onRefresh: () async => ref.invalidate(driversProvider),
-        emptyIcon: Icons.groups_outlined,
+        emptyIcon: AppIcons.groupsOutlined,
         emptyMessage: 'Aún no tienes choferes. Agrega uno para que pueda entrar y ver sus cobros.',
         addLabel: 'Agregar chofer',
         onAdd: () => _openForm(context),
-        itemBuilder: (ctx, d) => _DriverCard(driver: d),
+        header: (ctx, items) {
+          final on = items.where((d) => d.active).length;
+          final off = items.length - on;
+          return OwnerListHeader(
+            title: '${items.length} ${items.length == 1 ? 'chofer' : 'choferes'}',
+            subtitle: off == 0
+                ? (on == 1 ? '1 con acceso a la app' : '$on con acceso a la app')
+                : '$on con acceso · $off sin acceso',
+          );
+        },
+        itemBuilder: (ctx, d) => _DriverRow(driver: d),
       );
 }
 
-/// Iniciales sobre un círculo suave: reconocibles de un vistazo sin necesitar foto.
-String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
-  if (parts.isEmpty) return '?';
-  final first = parts.first[0];
-  final second = parts.length > 1 ? parts[1][0] : '';
-  return (first + second).toUpperCase();
+/// Chofer como fila abierta: avatar con iniciales, nombre y usuario, el interruptor de acceso a la
+/// derecha y, debajo, las acciones. Sin tarjeta: solo el fondo y una línea fina entre filas.
+class _DriverRow extends ConsumerStatefulWidget {
+  const _DriverRow({required this.driver});
+  final DriverItem driver;
+
+  @override
+  ConsumerState<_DriverRow> createState() => _DriverRowState();
 }
 
-class _DriverCard extends StatelessWidget {
-  const _DriverCard({required this.driver});
-  final DriverItem driver;
+class _DriverRowState extends ConsumerState<_DriverRow> {
+  bool _busy = false;
+
+  Future<void> _toggle(bool on) async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(ownerRepositoryProvider).updateDriver(widget.driver.id, active: on);
+      ref.invalidate(driversProvider);
+    } catch (e) {
+      if (mounted) showMessage(context, friendlyError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final p = context.palette;
-    final d = driver;
-    return AppCard(
-      onTap: () => _openForm(context, driver: d),
-      semanticLabel: '${d.name}, usuario ${d.login}, ${d.active ? 'activo' : 'apagado'}. Toca para editar.',
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: d.active ? p.accentSoft : p.field),
-            child: ExcludeSemantics(child: Text(_initials(d.name), style: text.titleMedium?.copyWith(color: d.active ? p.text : p.muted))),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final muted = context.palette.muted;
+    final d = widget.driver;
+
+    return Semantics(
+      container: true,
+      label: '${d.name}, usuario ${d.login}, ${d.active ? 'con acceso' : 'sin acceso'}.',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(d.name, style: text.titleLarge, overflow: TextOverflow.ellipsis),
-                Text('@${d.login}', style: text.bodyMedium?.copyWith(color: p.muted), overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 8),
-                StatusChip(label: d.active ? 'Activo' : 'Apagado', good: d.active),
+                InitialsAvatar(name: d.name, size: 56, active: d.active),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(d.name, style: text.headlineSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text('@${d.login}', style: text.bodyMedium?.copyWith(color: muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 6),
+                      StateTag(label: d.active ? 'Puede cobrar' : 'Sin acceso', on: d.active),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Semantics(
+                  label: 'Acceso a la app de ${d.name}',
+                  child: Switch(value: d.active, onChanged: _busy ? null : _toggle),
+                ),
               ],
             ),
-          ),
-          Icon(Icons.edit_rounded, size: 22, color: p.muted),
-        ],
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 70),
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  PillButton(label: 'Editar', icon: AppIcons.pencil, onPressed: () => _openForm(context, driver: d)),
+                  PillButton(label: 'Nuevo PIN', icon: AppIcons.hash, onPressed: () => _openForm(context, driver: d)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -133,19 +177,19 @@ class _DriverFormState extends ConsumerState<_DriverForm> with SubmitMixin<_Driv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LabeledField(label: 'Nombre del chofer', icon: Icons.badge_outlined, controller: _name, validator: Validators.minLength(2, 'El nombre')),
+          LabeledField(label: 'Nombre del chofer', icon: AppIcons.badge, controller: _name, validator: Validators.minLength(2, 'El nombre')),
           if (!_editing)
             LabeledField(
               label: 'Usuario',
               helper: 'Con este usuario entrará a la app.',
-              icon: Icons.person_outline_rounded,
+              icon: AppIcons.user,
               controller: _login,
               validator: Validators.all([Validators.minLength(3, 'El usuario'), (v) => RegExp(r'^[\w.@-]+$').hasMatch(v!.trim()) ? null : 'Usa letras, números, punto o guion, sin espacios.']),
             ),
           LabeledField(
             label: _editing ? 'PIN nuevo (opcional)' : 'PIN',
             helper: _editing ? 'Déjalo vacío para conservar el actual.' : 'De 4 a 6 números.',
-            icon: Icons.pin_outlined,
+            icon: AppIcons.hash,
             controller: _pin,
             digitsOnly: true,
             obscure: true,
@@ -168,7 +212,7 @@ class _DriverFormState extends ConsumerState<_DriverForm> with SubmitMixin<_Driv
             const SizedBox(height: 20),
           ],
           const SizedBox(height: 8),
-          AppButton(label: 'Guardar', icon: Icons.check_rounded, loading: busy, onPressed: _save),
+          AppButton(label: 'Guardar', icon: AppIcons.check, loading: busy, onPressed: _save),
         ],
       ),
     );

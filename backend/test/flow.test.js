@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
 import { createTestDatabase } from "./helpers/db.js";
-import { dayRangeUtc, hourMx, todayMx } from "../src/lib/time.js";
+import { dayRangeUtc, hourMx, monthRangeUtc, todayMx } from "../src/lib/time.js";
 
 process.env.NODE_ENV = "test";
 const config = loadConfig({ NODE_ENV: "test", PEY_MOCK_PAY_DELAY_SECONDS: "0" });
@@ -31,6 +31,8 @@ describe("time", () => {
     assert.deepEqual(dayRangeUtc("2026-11-14"), { from: "2026-11-14T06:00:00.000Z", to: "2026-11-15T06:00:00.000Z" });
     assert.equal(hourMx("2026-11-14T06:30:00.000Z"), 0);
     assert.equal(todayMx(new Date("2026-11-20T03:00:00Z")), "2026-11-19");
+    assert.deepEqual(monthRangeUtc(new Date("2026-12-15T12:00:00Z")), { from: "2026-12-01T06:00:00.000Z", to: "2027-01-01T06:00:00.000Z" });
+    assert.deepEqual(monthRangeUtc(new Date("2026-12-01T03:00:00Z")), { from: "2026-11-01T06:00:00.000Z", to: "2026-12-01T06:00:00.000Z" }); // aún es 30-nov en México
   });
 });
 
@@ -212,5 +214,80 @@ describe("concurrencia y bordes (Postgres)", () => {
     const items = all.body.items;
     assert.ok(items.every((i, k) => k === 0 || items[k - 1].paidAt >= i.paidAt), "orden descendente");
     assert.match(items[0].paidAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/); // sigue siendo ISO-8601 UTC
+  });
+});
+
+describe("pasajero con cuenta", () => {
+  let owner, unit, pax;
+
+  before(async () => {
+    owner = (await call("POST", "/api/auth/register-owner", { body: { name: "Dueña Pax", login: "duenapax", secret: "contraseña-segura" } })).body.token;
+    await call("PUT", "/api/owner/settings", { token: owner, body: { clabe: "012345678901234567", peyApiKey: "pey_key_abcdef1234", peyApiSecret: "pey_secret_123456" } });
+    unit = (await call("POST", "/api/owner/units", { token: owner, body: { label: "Unidad 7", route: "Ruta 9", fareCents: 1500 } })).body;
+  });
+
+  it("se registra, entra y no puede usar rutas de dueño ni chofer", async () => {
+    const body = { name: "Ana Pasajera", login: "ana", secret: "contraseña-segura" };
+    const r = await call("POST", "/api/auth/register-passenger", { body });
+    assert.equal(r.status, 201);
+    assert.equal(r.body.user.role, "passenger");
+    pax = r.body.token;
+    assert.equal((await call("POST", "/api/auth/register-passenger", { body: { ...body, login: "ANA" } })).status, 409);
+    assert.equal((await call("POST", "/api/auth/register-passenger", { body: { ...body, login: "ana2", secret: "corta" } })).status, 400);
+    assert.equal((await call("POST", "/api/auth/login", { body: { login: "ana", secret: body.secret } })).status, 200);
+    assert.equal((await call("GET", "/api/auth/me", { token: pax })).body.user.role, "passenger");
+    assert.equal((await call("GET", "/api/owner/units", { token: pax })).status, 403);
+    assert.equal((await call("GET", "/api/driver/shift", { token: pax })).status, 403);
+  });
+
+  it("/passenger exige sesión de pasajero", async () => {
+    assert.equal((await call("GET", "/api/passenger/me")).status, 401);
+    assert.equal((await call("GET", "/api/passenger/me", { token: owner })).status, 403);
+    assert.equal((await call("GET", "/api/passenger/payments", { token: owner })).status, 403);
+  });
+
+  it("vincula, enmascara y quita la cuenta", async () => {
+    assert.deepEqual((await call("GET", "/api/passenger/me", { token: pax })).body, { name: "Ana Pasajera", login: "ana", account: null });
+    assert.equal((await call("PUT", "/api/passenger/account", { token: pax, body: { holder: "Ana", phone: "55123", bank: "BBVA" } })).status, 400);
+    const put = await call("PUT", "/api/passenger/account", { token: pax, body: { holder: "Ana Pasajera", phone: "5512345678", bank: "BBVA" } });
+    assert.equal(put.status, 200);
+    assert.deepEqual(put.body.account, { holder: "Ana Pasajera", phone: "••••••5678", bank: "BBVA" });
+    // cambiar de banco reemplaza, no duplica
+    await call("PUT", "/api/passenger/account", { token: pax, body: { holder: "Ana Pasajera", phone: "5512345678", bank: "Nu" } });
+    assert.equal((await call("GET", "/api/passenger/me", { token: pax })).body.account.bank, "Nu");
+    assert.equal((await db.query("SELECT COUNT(*)::int AS n FROM passenger_accounts")).rows[0].n, 1);
+    assert.ok(!JSON.stringify((await call("GET", "/api/passenger/me", { token: pax })).body).includes("5512345678"), "el celular no debe salir completo");
+    assert.equal((await call("DELETE", "/api/passenger/account", { token: pax })).status, 204);
+    assert.equal((await call("GET", "/api/passenger/me", { token: pax })).body.account, null);
+    await call("PUT", "/api/passenger/account", { token: pax, body: { holder: "Ana Pasajera", phone: "5512345678", bank: "Nu" } });
+  });
+
+  it("sus pagos quedan en el historial y suman al mes; los anónimos no", async () => {
+    const mine = await call("POST", `/api/public/units/${unit.code}/charges`, { token: pax, body: {} });
+    assert.equal(mine.status, 201);
+    await call("GET", `/api/public/charges/${mine.body.id}`); // el mock paga al instante
+    const anon = await call("POST", `/api/public/units/${unit.code}/charges`, { body: {} });
+    await call("GET", `/api/public/charges/${anon.body.id}`);
+    // el dueño con su propio token tampoco cuenta como pasajero
+    await call("POST", `/api/public/units/${unit.code}/charges`, { token: owner, body: {} });
+
+    const h = await call("GET", "/api/passenger/payments?limit=100", { token: pax });
+    assert.equal(h.status, 200);
+    assert.equal(h.body.payments.length, 1);
+    assert.deepEqual(
+      [h.body.payments[0].id, h.body.payments[0].status, h.body.payments[0].amountCents, h.body.payments[0].unitLabel, h.body.payments[0].route],
+      [mine.body.id, "paid", 1500, "Unidad 7", "Ruta 9"],
+    );
+    assert.match(h.body.payments[0].createdAt, /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal(h.body.monthCents, 1500);
+    assert.equal((await call("GET", "/api/passenger/payments?limit=0", { token: pax })).status, 400);
+  });
+
+  it("un token vencido o ajeno en el cobro público no lo rompe; y un cobro vencido se ve como tal", async () => {
+    assert.equal((await call("POST", `/api/public/units/${unit.code}/charges`, { token: "basura", body: {} })).status, 201);
+    const c = await call("POST", `/api/public/units/${unit.code}/charges`, { token: pax, body: {} });
+    await db.query("UPDATE charges SET expires_at = now() - interval '1 minute' WHERE id = $1", [c.body.id]);
+    const h = await call("GET", "/api/passenger/payments", { token: pax });
+    assert.equal(h.body.payments.find((p) => p.id === c.body.id).status, "expired");
   });
 });

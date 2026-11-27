@@ -13,6 +13,7 @@ import '../domain/driver_models.dart';
 import '../state/driver_providers.dart';
 import 'active_shift_view.dart';
 import 'unit_picker.dart';
+import '../../../core/widgets/cover_image.dart';
 
 /// Pantalla del chofer: o elige unidad para empezar, o ve su turno en marcha.
 class DriverHomePage extends ConsumerWidget {
@@ -23,9 +24,11 @@ class DriverHomePage extends ConsumerWidget {
     final name = ref.watch(sessionProvider).valueOrNull?.user.firstName ?? '';
     final shift = ref.watch(shiftProvider);
     return PageScaffold(
+      overlap: false,
+      cover: true,
       title: 'Hola, $name',
       showBack: false,
-      actions: const [LogoutAction()],
+      actions: const [CoverButton(color: AppColors.ink), LogoutAction()],
       hero: _ShiftHero(shift: shift.valueOrNull),
       child: AsyncValueView<ShiftState>(
         value: shift,
@@ -49,9 +52,9 @@ class _ShiftHero extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Listo para\nempezar', style: text.headlineMedium?.copyWith(color: Colors.white)),
+          Text('Listo para\nempezar', style: text.headlineMedium?.copyWith(color: AppColors.ink)),
           const SizedBox(height: 6),
-          Text('Elige tu unidad para abrir turno.', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
+          Text('Elige tu unidad para abrir turno.', style: text.bodyLarge?.copyWith(color: AppColors.graphite)),
         ],
       );
     }
@@ -63,7 +66,7 @@ class _ShiftHero extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(2, 4, 14, 4),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(.1), borderRadius: BorderRadius.circular(99)),
+            decoration: BoxDecoration(color: Colors.black.withOpacity(.08), borderRadius: BorderRadius.circular(99)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -71,7 +74,7 @@ class _ShiftHero extends StatelessWidget {
                 Flexible(
                   child: Text(
                     'EN TURNO · ${s.unit!.label} · ${s.unit!.route}',
-                    style: text.labelSmall?.copyWith(color: Colors.white),
+                    style: text.labelSmall?.copyWith(color: AppColors.ink),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -79,16 +82,16 @@ class _ShiftHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text('Cobrado hoy', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
+          Text('Cobrado hoy', style: text.bodyLarge?.copyWith(color: AppColors.graphite)),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(Money.format(s.amountCents), style: text.displayMedium?.copyWith(color: Colors.white)),
+            child: Text(Money.format(s.amountCents), style: text.displayMedium?.copyWith(color: AppColors.ink)),
           ),
           const SizedBox(height: 4),
           Text(
             '${s.count} ${s.count == 1 ? 'pasajero' : 'pasajeros'} · desde las ${AppDates.time(s.startedAt!)}',
-            style: text.bodyLarge?.copyWith(color: AppColors.silver),
+            style: text.bodyLarge?.copyWith(color: AppColors.graphite),
           ),
         ],
       ),

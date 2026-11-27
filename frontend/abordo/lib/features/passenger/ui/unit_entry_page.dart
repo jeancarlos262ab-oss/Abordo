@@ -9,9 +9,9 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/page_scaffold.dart';
-import '../../../core/widgets/step_progress.dart';
 import 'confirm_page.dart';
 import 'scan_page.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Paso 1: ¿en qué unidad voy? Primero la cámara (lo más fácil); el número es la alternativa.
 class UnitEntryPage extends StatefulWidget {
@@ -53,11 +53,9 @@ class _UnitEntryPageState extends State<UnitEntryPage> {
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Busca el código\nde la unidad', style: text.headlineMedium?.copyWith(color: Colors.white)),
+          Text('Busca el código\nde la unidad', style: text.headlineMedium?.copyWith(color: AppColors.ink)),
           const SizedBox(height: 6),
-          Text('Está junto a la puerta o cerca del chofer.', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
-          const SizedBox(height: 24),
-          const StepProgress(current: 1),
+          Text('Está junto a la puerta o cerca del chofer.', style: text.bodyLarge?.copyWith(color: AppColors.graphite)),
         ],
       ),
       child: Form(
@@ -65,28 +63,29 @@ class _UnitEntryPageState extends State<UnitEntryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppButton(label: 'Escanear el código', icon: Icons.qr_code_scanner_rounded, onPressed: _scan),
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                Expanded(child: Divider(color: p.borderStrong.withOpacity(.5))),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Text('o escribe el número', style: text.bodyMedium?.copyWith(color: p.muted)),
-                ),
-                Expanded(child: Divider(color: p.borderStrong.withOpacity(.5))),
-              ],
-            ),
-            const SizedBox(height: 24),
             AppCard(
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 4),
+              radius: Dimens.rXl,
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  AppButton(label: 'Escanear el código', icon: AppIcons.scan, onPressed: _scan),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: p.borderStrong.withOpacity(.5))),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('o escribe el número', style: text.bodySmall?.copyWith(color: p.muted)),
+                      ),
+                      Expanded(child: Divider(color: p.borderStrong.withOpacity(.5))),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   LabeledField(
                     label: 'Número de la unidad',
                     helper: 'Aparece debajo del código.',
-                    icon: Icons.pin_outlined,
+                    icon: AppIcons.hash,
                     controller: _code,
                     digitsOnly: true,
                     maxLength: AppConfig.unitCodeMax,
@@ -98,7 +97,7 @@ class _UnitEntryPageState extends State<UnitEntryPage> {
               ),
             ),
             const SizedBox(height: 16),
-            AppButton(label: 'Continuar', icon: Icons.arrow_forward_rounded, kind: ButtonKind.secondary, onPressed: _typed),
+            AppButton(label: 'Continuar', icon: AppIcons.arrowRight, onPressed: _typed),
           ],
         ),
       ),

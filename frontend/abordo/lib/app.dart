@@ -7,6 +7,7 @@ import 'core/widgets/state_views.dart';
 import 'features/auth/domain/session.dart';
 import 'features/auth/state/session_controller.dart';
 import 'features/driver/ui/driver_home_page.dart';
+import 'features/auth/ui/role_select_page.dart';
 import 'features/home/ui/home_page.dart';
 import 'features/owner/ui/owner_shell.dart';
 
@@ -19,8 +20,8 @@ class AbordoApp extends StatelessWidget {
       title: 'ABORDO',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      // La app es rosa y blanco: siempre usa el tema claro.
+      themeMode: ThemeMode.light,
       locale: const Locale('es', 'MX'),
       supportedLocales: const [Locale('es', 'MX'), Locale('es')],
       localizationsDelegates: const [
@@ -28,20 +29,14 @@ class AbordoApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // Respeta el tamaño de letra del sistema (mucha gente mayor lo agranda), con un tope
-      // para que los botones y tarjetas no se rompan.
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: MediaQuery.textScalerOf(context).clamp(minScaleFactor: 1, maxScaleFactor: 1.5),
-        ),
-        child: child!,
-      ),
+      // El tamaño de letra es exactamente el del sistema (sin forzar mínimo ni máximo).
       home: const AuthGate(),
     );
   }
 }
 
-/// Decide la pantalla raíz según la sesión: sin sesión -> inicio; chofer -> turno; dueño -> panel.
+/// Decide la pantalla raíz según la sesión: sin sesión -> elegir rol; usuario -> ciudad con el bus;
+/// chofer -> turno; dueño -> panel.
 /// Cuando la sesión cambia (entrar, salir o vencerse) cierra cualquier pantalla abierta encima.
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -53,14 +48,28 @@ class AuthGate extends ConsumerWidget {
       if (changed) Navigator.of(context).popUntil((r) => r.isFirst);
     });
 
-    return ref.watch(sessionProvider).when(
-          loading: () => const Scaffold(body: LoadingView()),
-          error: (_, __) => const HomePage(),
+    final home = ref.watch(sessionProvider).when(
+          loading: () => const Scaffold(key: ValueKey('loading'), body: LoadingView()),
+          error: (_, __) => const RoleSelectPage(key: ValueKey('roles')),
           data: (session) => switch (session?.user.role) {
-            Role.owner => const OwnerShell(),
-            Role.driver => const DriverHomePage(),
-            null => const HomePage(),
+            Role.owner => const OwnerShell(key: ValueKey('owner')),
+            Role.driver => const DriverHomePage(key: ValueKey('driver')),
+            Role.passenger => const HomePage(key: ValueKey('home')),
+            null => const RoleSelectPage(key: ValueKey('roles')),
           },
         );
+
+    // Cambio de pantalla raíz con el mismo deslizamiento que el resto de la app.
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => SlideTransition(
+        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(animation),
+        child: child,
+      ),
+      layoutBuilder: (current, previous) => Stack(children: [...previous, if (current != null) current]),
+      child: home,
+    );
   }
 }

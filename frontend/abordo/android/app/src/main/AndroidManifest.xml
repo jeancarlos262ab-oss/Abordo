@@ -1,4 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Sin esto la app compilada en release no puede conectarse al backend (solo debug lo trae). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Cámara para escanear el QR de la unidad (mobile_scanner). required=false: se puede instalar en equipos sin cámara y teclear el código. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- Ubicación para el botón "Mi ubicación" del mapa (geolocator). Solo mientras la app está en uso. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+
     <application
         android:label="abordo"
         android:name="${applicationName}"
@@ -40,6 +50,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+: la voz del aviso de pago (flutter_tts) necesita ver el servicio de texto a voz. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
+        <!-- Android 11+: abrir la app del banco / enlaces de pago (url_launcher). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

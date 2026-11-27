@@ -14,8 +14,14 @@ class RankedItem {
 /// Lista ordenada con barra proporcional (como "cobros por chofer" de la landing).
 /// El primer lugar lleva el rosa de marca; los demás, una versión suave.
 class RankedBars extends StatelessWidget {
-  const RankedBars({super.key, required this.items});
+  const RankedBars({super.key, required this.items, this.leadingIcon, this.total});
   final List<RankedItem> items;
+
+  /// Si se da, cada fila lleva este icono en vez del número de lugar.
+  final IconData? leadingIcon;
+
+  /// Si se da, se muestra el porcentaje que representa cada fila.
+  final int? total;
 
   @override
   Widget build(BuildContext context) {
@@ -36,14 +42,24 @@ class RankedBars extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        width: 26,
-                        height: 26,
+                        width: 38,
+                        height: 38,
                         alignment: Alignment.center,
-                        decoration: BoxDecoration(color: n == 0 ? p.accentSoft : p.field, shape: BoxShape.circle),
-                        child: Text('${n + 1}', style: text.labelMedium?.copyWith(color: n == 0 ? p.text : p.muted)),
+                        decoration: BoxDecoration(color: n == 0 ? AppColors.rose : p.field, shape: BoxShape.circle),
+                        child: leadingIcon != null
+                            ? Icon(leadingIcon, size: 20, color: n == 0 ? AppColors.ink : p.muted)
+                            : Text('${n + 1}', style: text.labelMedium?.copyWith(color: n == 0 ? AppColors.ink : p.muted)),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(items[n].name, style: text.titleMedium, overflow: TextOverflow.ellipsis)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(items[n].name, style: text.titleMedium, overflow: TextOverflow.ellipsis),
+                            Text(items[n].caption, style: text.bodySmall?.copyWith(color: p.muted)),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       Text(Money.format(items[n].cents), style: tabular(text.titleMedium)),
                     ],
@@ -58,8 +74,13 @@ class RankedBars extends StatelessWidget {
                       backgroundColor: p.field,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(items[n].caption, style: text.bodySmall?.copyWith(color: p.muted)),
+                  if (total != null && total! > 0) ...[
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text('${(items[n].cents * 100 / total!).round()} % del total', style: text.bodySmall?.copyWith(color: p.muted)),
+                    ),
+                  ],
                 ],
               ),
             ),

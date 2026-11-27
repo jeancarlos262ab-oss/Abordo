@@ -5,7 +5,7 @@ import '../utils/motion.dart';
 
 /// Punto "en vivo" con un halo que se expande.
 class PulseDot extends StatefulWidget {
-  const PulseDot({super.key, this.color = AppColors.pink, this.size = 12});
+  const PulseDot({super.key, this.color = AppColors.rose, this.size = 12});
   final Color color;
   final double size;
 

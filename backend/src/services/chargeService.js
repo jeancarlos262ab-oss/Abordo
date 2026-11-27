@@ -14,7 +14,7 @@ export const chargeView = (c, unit) => ({
   paidAt: c.paidAt,
 });
 
-export function chargeService({ charges, units, shifts, ownerService, pey, config }) {
+export function chargeService({ charges, units, shifts, ownerService, passengerService, pey, config }) {
   /** Sincroniza el estado con pey (plan B del webhook) y vence cobros viejos. */
   async function refresh(charge) {
     if (charge.status !== "pending") return charge;
@@ -30,7 +30,7 @@ export function chargeService({ charges, units, shifts, ownerService, pey, confi
   }
 
   return {
-    async create(unitCode, { payerPhone }) {
+    async create(unitCode, { payerPhone, passengerId }) {
       const unit = await units.findByCode(unitCode);
       if (!unit?.active) throw notFound("Esa unidad no existe o no está disponible.");
       const settings = await ownerService.getSettings(unit.ownerId);
@@ -38,6 +38,8 @@ export function chargeService({ charges, units, shifts, ownerService, pey, confi
         throw new AppError(409, "unit_not_ready", "Esta unidad todavía no puede recibir pagos con CoDi.");
       }
       const shift = await shifts.findOpenByUnit(unit.id);
+      // Un pasajero con cuenta vinculada recibe el aviso en su banco aunque no escriba el celular.
+      payerPhone ??= passengerId ? await passengerService.linkedPhone(passengerId) : undefined;
       const id = randomUUID();
       const expiresAt = new Date(Date.now() + config.chargeTtlMs).toISOString();
       const r = await pey.createCharge({
@@ -51,7 +53,7 @@ export function chargeService({ charges, units, shifts, ownerService, pey, confi
       });
       const saved = await charges.insert({
         id, ownerId: unit.ownerId, unitId: unit.id, shiftId: shift?.id ?? null, driverId: shift?.driverId ?? null,
-        amountCents: unit.fareCents, peyRef: r.peyRef, qrPayload: r.qrPayload, payLink: r.payLink, expiresAt,
+        amountCents: unit.fareCents, peyRef: r.peyRef, qrPayload: r.qrPayload, payLink: r.payLink, expiresAt, passengerId,
       });
       return chargeView(saved, unit);
     },

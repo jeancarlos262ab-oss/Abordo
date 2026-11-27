@@ -52,9 +52,9 @@ class AppButton extends StatelessWidget {
         bg = scheme.primary;
         fg = scheme.onPrimary;
       case ButtonKind.secondary:
-        bg = p.card;
+        bg = Colors.transparent;
         fg = p.text;
-        side = BorderSide(color: p.borderStrong, width: 1.5);
+        side = BorderSide(color: p.text.withOpacity(.3), width: 1);
       case ButtonKind.danger:
         bg = p.danger;
         fg = scheme.onError;
@@ -71,7 +71,7 @@ class AppButton extends StatelessWidget {
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[Icon(icon, size: 22), const SizedBox(width: 10)],
+              if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
               Flexible(child: Text(label, textAlign: TextAlign.center)),
             ],
           );
@@ -83,7 +83,7 @@ class AppButton extends StatelessWidget {
 
     // Mientras carga se mantiene el color normal (no el gris de "deshabilitado").
     final VoidCallback? cb = enabled ? tap : (loading ? () {} : null);
-    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rMd), side: side);
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(99), side: side);
     final labelStyle = Theme.of(context).textTheme.labelLarge;
 
     if (kind == ButtonKind.text) {

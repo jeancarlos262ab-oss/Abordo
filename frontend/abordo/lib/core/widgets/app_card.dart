@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 
-/// Contenedor base de la app: superficie redondeada con borde fino y sombra suave.
+/// Contenedor base de la app: sin relleno, solo borde (como las listas del dueño).
 /// Si recibe `onTap` se vuelve un botón accesible con ripple.
 class AppCard extends StatelessWidget {
   const AppCard({
@@ -31,10 +31,9 @@ class AppCard extends StatelessWidget {
     final r = BorderRadius.circular(radius);
     final card = DecoratedBox(
       decoration: BoxDecoration(
-        color: color ?? p.card,
+        color: color,
         borderRadius: r,
-        border: Border.all(color: p.border),
-        boxShadow: shadow ? p.cardShadow : const [],
+        border: Border.all(color: p.outline, width: 1),
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -51,8 +50,11 @@ class AppCard extends StatelessWidget {
 
 /// Título de sección sobre fondo de pantalla: pequeño, en mayúsculas y con aire.
 class SectionLabel extends StatelessWidget {
-  const SectionLabel(this.label, {super.key, this.trailing});
+  const SectionLabel(this.label, {super.key, this.trailing, this.color});
   final String label;
+
+  /// Color del texto; por defecto el gris de la paleta.
+  final Color? color;
   final Widget? trailing;
 
   @override
@@ -65,7 +67,7 @@ class SectionLabel extends StatelessWidget {
           Expanded(
             child: Semantics(
               header: true,
-              child: Text(label.toUpperCase(), style: text.labelSmall?.copyWith(color: context.palette.muted)),
+              child: Text(label.toUpperCase(), style: text.labelSmall?.copyWith(color: color ?? context.palette.muted)),
             ),
           ),
           if (trailing != null) trailing!,
@@ -90,8 +92,8 @@ class IconTile extends StatelessWidget {
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: background ?? p.accentSoft, borderRadius: BorderRadius.circular(size * .3)),
-        child: Icon(icon, size: size * .5, color: foreground ?? (Theme.of(context).brightness == Brightness.dark ? AppColors.pink : AppColors.ink)),
+        decoration: BoxDecoration(color: background ?? AppColors.rose, borderRadius: BorderRadius.circular(size * .3)),
+        child: Icon(icon, size: size * .5, color: foreground ?? AppColors.ink),
       ),
     );
   }

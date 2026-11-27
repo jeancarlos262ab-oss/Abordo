@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/app_theme.dart';
 import 'state_views.dart';
+import '../theme/app_icons.dart';
 
 /// Lista administrable (unidades, choferes): carga/error/vacío, jalar para actualizar
 /// y un botón flotante con TEXTO ("Agregar unidad"), no solo un "+".
@@ -52,7 +53,7 @@ class ResourceListView<T> extends StatelessWidget {
             bottom: 20,
             child: FloatingActionButton.extended(
               onPressed: onAdd,
-              icon: const Icon(Icons.add_rounded, size: 26),
+              icon: const Icon(AppIcons.plus, size: 26),
               label: Text(addLabel, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF161314))),
             ),
           ),

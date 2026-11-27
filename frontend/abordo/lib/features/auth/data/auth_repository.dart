@@ -19,6 +19,9 @@ class AuthRepository {
   Future<Session> registerOwner({required String name, required String login, required String secret}) async =>
       _persist(await _api.post('/auth/register-owner', body: {'name': name, 'login': login, 'secret': secret}));
 
+  Future<Session> registerPassenger({required String name, required String login, required String secret}) async =>
+      _persist(await _api.post('/auth/register-passenger', body: {'name': name, 'login': login, 'secret': secret}));
+
   /// Sesión guardada, o null. Si el servidor responde que el token ya no vale, se borra.
   /// Sin internet se confía en lo guardado para poder abrir la app.
   Future<Session?> restore() async {

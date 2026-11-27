@@ -72,4 +72,21 @@ export const MIGRATIONS = [
   CREATE INDEX idx_charges_paid_seq   ON charges (paid_seq) WHERE paid_seq IS NOT NULL;
   CREATE UNIQUE INDEX uq_charges_pey_ref ON charges (pey_ref) WHERE pey_ref IS NOT NULL;
   `,
+
+  /* 2 · pasajeros con cuenta: rol, cuenta vinculada para CoDi y cobros atribuidos al pasajero */
+  `
+  ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+  ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','driver','passenger'));
+
+  CREATE TABLE passenger_accounts (
+    passenger_id INTEGER PRIMARY KEY REFERENCES users(id),
+    holder       TEXT NOT NULL,
+    phone        TEXT NOT NULL,                        -- celular (10 dígitos) registrado en su banco para CoDi
+    bank         TEXT NOT NULL,
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+
+  ALTER TABLE charges ADD COLUMN passenger_id INTEGER REFERENCES users(id);   -- NULL: pagó sin cuenta
+  CREATE INDEX idx_charges_passenger ON charges (passenger_id, created_at DESC) WHERE passenger_id IS NOT NULL;
+  `,
 ];

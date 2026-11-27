@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/submit_mixin.dart';
 import '../state/session_controller.dart';
+import '../../../core/theme/app_icons.dart';
 
 class RegisterOwnerPage extends ConsumerStatefulWidget {
   const RegisterOwnerPage({super.key});
@@ -41,9 +43,9 @@ class _RegisterOwnerPageState extends ConsumerState<RegisterOwnerPage> with Subm
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Cobra el pasaje\ncon CoDi', style: text.headlineMedium?.copyWith(color: Colors.white)),
+          Text('Cobra el pasaje\ncon CoDi', style: text.headlineMedium?.copyWith(color: AppColors.ink)),
           const SizedBox(height: 6),
-          Text('Registra tus unidades y ve tu cuadre del día.', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
+          Text('Registra tus unidades y ve tu cuadre del día.', style: text.bodyLarge?.copyWith(color: AppColors.graphite)),
         ],
       ),
       child: Form(
@@ -51,26 +53,35 @@ class _RegisterOwnerPageState extends ConsumerState<RegisterOwnerPage> with Subm
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LabeledField(label: 'Tu nombre', icon: Icons.badge_outlined, controller: _name, autofocus: true, validator: Validators.minLength(2, 'El nombre')),
+            AppCard(
+              radius: 28,
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+            LabeledField(label: 'Tu nombre', icon: AppIcons.badge, controller: _name, autofocus: true, validator: Validators.minLength(2, 'El nombre')),
             LabeledField(
               label: 'Tu usuario',
               helper: 'Con este usuario entrarás después.',
-              icon: Icons.person_outline_rounded,
+              icon: AppIcons.user,
               controller: _login,
               validator: Validators.minLength(3, 'El usuario'),
             ),
             LabeledField(
               label: 'Tu contraseña',
               helper: 'Mínimo 8 caracteres.',
-              icon: Icons.lock_outline_rounded,
+              icon: AppIcons.lock,
               controller: _secret,
               obscure: true,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submit(),
               validator: Validators.minLength(8, 'La contraseña'),
             ),
-            const SizedBox(height: 4),
-            AppButton(label: 'Crear cuenta', icon: Icons.check_rounded, loading: busy, onPressed: _submit),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            AppButton(label: 'Crear cuenta', icon: AppIcons.check, loading: busy, onPressed: _submit),
           ],
         ),
       ),

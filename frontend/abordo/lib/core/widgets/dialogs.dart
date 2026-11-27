@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'app_button.dart';
+import '../theme/app_icons.dart';
 
 /// Diálogo con la forma de la app: icono en círculo, título, contenido y botones apilados.
 /// Los botones llegan a todo lo ancho, fáciles de tocar con una sola mano.
@@ -31,7 +32,7 @@ class AppDialog extends StatelessWidget {
     final p = context.palette;
     final text = Theme.of(context).textTheme;
     return Dialog(
-      backgroundColor: p.card,
+      backgroundColor: p.background,
       surfaceTintColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rXl + 4)),
@@ -87,7 +88,7 @@ Future<bool> confirm(
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AppDialog(
-      icon: icon ?? (danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded),
+      icon: icon ?? (danger ? AppIcons.warning : AppIcons.help),
       iconColor: danger ? p.danger : null,
       iconBackground: danger ? p.dangerSoft : null,
       title: title,
@@ -127,7 +128,7 @@ Future<T?> showFormSheet<T>(BuildContext context, {required String title, requir
                   tooltip: 'Cerrar',
                   onPressed: () => Navigator.of(ctx).maybePop(),
                   style: IconButton.styleFrom(backgroundColor: ctx.palette.field, fixedSize: const Size.square(40)),
-                  icon: const Icon(Icons.close_rounded, size: 22),
+                  icon: const Icon(AppIcons.close, size: 22),
                 ),
               ],
             ),
@@ -154,7 +155,7 @@ void showMessageOn(ScaffoldMessengerState messenger, String message, {bool error
         duration: const Duration(seconds: 4),
         content: Row(
           children: [
-            Icon(error ? Icons.error_rounded : Icons.check_circle_rounded, color: error ? AppColors.dangerBright : AppColors.successBright),
+            Icon(error ? AppIcons.warningCircle : AppIcons.checkCircle, color: error ? AppColors.dangerBright : AppColors.successBright),
             const SizedBox(width: 12),
             Expanded(child: Text(message)),
           ],

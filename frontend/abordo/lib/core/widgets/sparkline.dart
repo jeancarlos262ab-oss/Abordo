@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Gráfica de línea suave con relleno degradado y punto final (la del panel de la landing).
+/// Gráfica de línea suave con relleno plano translúcido y punto final (la del panel de la landing).
 /// Sin dependencias externas. Toma el color primario del tema (rosa dentro del hero).
 class Sparkline extends StatelessWidget {
   const Sparkline({super.key, required this.values, this.height = 96, this.semanticLabel, this.color});
@@ -67,12 +67,7 @@ class _SparklinePainter extends CustomPainter {
       ..close();
     canvas.drawPath(
       area,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [color.withOpacity(.38), color.withOpacity(0)],
-        ).createShader(Offset.zero & size),
+      Paint()..color = color.withOpacity(.16),
     );
 
     canvas.drawPath(

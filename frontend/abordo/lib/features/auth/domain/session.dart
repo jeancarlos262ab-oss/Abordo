@@ -1,11 +1,15 @@
-enum Role { owner, driver }
+enum Role { owner, driver, passenger }
 
 class User {
   const User({required this.id, required this.role, required this.name, required this.login});
 
   factory User.fromJson(Map<String, dynamic> j) => User(
         id: j['id'] as int,
-        role: j['role'] == 'owner' ? Role.owner : Role.driver,
+        role: switch (j['role']) {
+          'owner' => Role.owner,
+          'passenger' => Role.passenger,
+          _ => Role.driver,
+        },
         name: j['name'] as String,
         login: j['login'] as String,
       );

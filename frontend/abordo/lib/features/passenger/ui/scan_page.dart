@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/unit_code.dart';
 import '../../../core/widgets/scan_frame.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Cámara a pantalla completa que lee el QR fijo de la unidad y regresa su código con `Navigator.pop`.
 /// Un velo oscuro con ventana redondeada guía la vista hacia el recuadro.
@@ -59,11 +60,11 @@ class _ScanPageState extends State<ScanPage> {
               controller: _controller,
               onDetect: _onDetect,
               errorBuilder: (context, error, child) => Theme(
-                data: AppTheme.dark,
+                data: AppTheme.light,
                 child: ColoredBox(
-                  color: AppColors.ink,
+                  color: AppColors.rose,
                   child: MessageView(
-                    icon: Icons.no_photography_rounded,
+                    icon: AppIcons.cameraOff,
                     message: 'No pudimos abrir la cámara. Permite el acceso a la cámara o escribe el número de la unidad.',
                     actionLabel: 'Escribir el número',
                     onAction: () => Navigator.of(context).pop(),
@@ -81,8 +82,8 @@ class _ScanPageState extends State<ScanPage> {
                   child: IconButton.filled(
                     onPressed: () => Navigator.of(context).pop(),
                     tooltip: 'Regresar',
-                    style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white, fixedSize: const Size.square(52)),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 26),
+                    style: IconButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white, fixedSize: const Size.square(48)),
+                    icon: const Icon(AppIcons.back, size: 20),
                   ),
                 ),
               ),
@@ -92,12 +93,13 @@ class _ScanPageState extends State<ScanPage> {
               child: Container(
                 padding: EdgeInsets.fromLTRB(22, 26, 22, 22 + MediaQuery.paddingOf(context).bottom),
                 decoration: const BoxDecoration(
-                  color: AppColors.ink,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  color: AppColors.rose,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(Dimens.rXl)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: AppColors.ink.withOpacity(.25), borderRadius: BorderRadius.circular(2))),
                     Semantics(
                       liveRegion: true,
                       child: Row(
@@ -106,21 +108,21 @@ class _ScanPageState extends State<ScanPage> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(top: 1),
-                            child: Icon(_invalid ? Icons.error_outline_rounded : Icons.qr_code_scanner_rounded, color: _invalid ? AppColors.dangerBright : AppColors.pink, size: 22),
+                            child: Icon(_invalid ? AppIcons.warningCircle : AppIcons.scan, color: _invalid ? AppColors.danger : AppColors.ink, size: 22),
                           ),
                           const SizedBox(width: 10),
                           Flexible(
                             child: Text(
                               _invalid ? 'Ese código no es de una unidad ABORDO. Intenta con otro.' : 'Apunta la cámara al código QR de la unidad.',
                               textAlign: TextAlign.center,
-                              style: text.titleMedium?.copyWith(color: Colors.white),
+                              style: text.titleMedium?.copyWith(color: AppColors.ink),
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 18),
-                    _OnDarkButton(label: 'Escribir el número', icon: Icons.pin_outlined, onPressed: () => Navigator.of(context).pop()),
+                    _OnDarkButton(label: 'Escribir el número', icon: AppIcons.hash, onPressed: () => Navigator.of(context).pop()),
                   ],
                 ),
               ),
@@ -146,10 +148,10 @@ class _OnDarkButton extends StatelessWidget {
       icon: Icon(icon, size: 22),
       label: Text(label),
       style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(56),
-        backgroundColor: Colors.white.withOpacity(.12),
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.white.withOpacity(.2), width: 1.5)),
+        minimumSize: const Size.fromHeight(Dimens.buttonHeight),
+        backgroundColor: AppColors.ink,
+        foregroundColor: AppColors.rose,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
         textStyle: Theme.of(context).textTheme.labelLarge,
       ),
     );

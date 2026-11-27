@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'app_card.dart';
 import 'qr_mark.dart';
+import '../theme/app_icons.dart';
 
 /// Fila de opción grande: baldosa con icono, título, frase corta y flecha.
 class ActionCard extends StatelessWidget {
@@ -54,7 +55,7 @@ class ActionCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(color: p.field, shape: BoxShape.circle),
-                child: Icon(Icons.arrow_forward_rounded, size: 20, color: p.text),
+                child: Icon(AppIcons.arrowRight, size: 20, color: p.text),
               ),
         ],
       ),
@@ -62,8 +63,8 @@ class ActionCard extends StatelessWidget {
   }
 }
 
-/// La acción principal de la pantalla de inicio: tarjeta rosa de marca con un QR que se escanea.
-/// Siempre usa tinta sobre rosa, sin importar el tema.
+/// La acción principal de la pantalla de inicio: una tarjeta de información sobre el mapa y,
+/// debajo, un botón blanco aparte (como "Share location" de la referencia).
 class FeatureCard extends StatelessWidget {
   const FeatureCard({
     super.key,
@@ -83,73 +84,52 @@ class FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final r = BorderRadius.circular(Dimens.rXl);
+    final p = context.palette;
     return Semantics(
       button: true,
       container: true,
-      label: '$title. $subtitle',
+      label: '$title. $subtitle. $actionLabel',
       excludeSemantics: true,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: r,
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFFAC6D8), AppColors.pink, Color(0xFFF1A0BF)],
-          ),
-          boxShadow: const [BoxShadow(color: Color(0x40E97FA7), blurRadius: 28, offset: Offset(0, 14))],
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          borderRadius: r,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: r,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 22, 18, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppCard(
+              radius: Dimens.rLg,
+              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+              child: Row(
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(color: AppColors.ink.withOpacity(.1), borderRadius: BorderRadius.circular(99)),
-                              child: Text(eyebrow.toUpperCase(), style: text.labelSmall?.copyWith(color: AppColors.ink)),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(title, style: text.headlineMedium?.copyWith(color: AppColors.ink)),
-                            const SizedBox(height: 6),
-                            Text(subtitle, style: text.bodyLarge?.copyWith(color: AppColors.ink.withOpacity(.78))),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Transform.rotate(angle: .1, child: const QrMark(size: 84)),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Container(
-                    height: Dimens.buttonHeight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(Dimens.rMd)),
-                    child: Row(
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: Text(actionLabel, style: text.labelLarge?.copyWith(color: Colors.white))),
-                        const Icon(Icons.arrow_forward_rounded, color: AppColors.pink, size: 24),
+                        Text(eyebrow.toUpperCase(), style: text.labelSmall?.copyWith(color: p.muted)),
+                        const SizedBox(height: 4),
+                        Text(title, style: text.headlineMedium),
+                        const SizedBox(height: 2),
+                        Text(subtitle, style: text.bodyMedium?.copyWith(color: p.muted)),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.rose),
+                    child: const Icon(AppIcons.scan, color: AppColors.ink, size: 28),
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(height: 10),
+            AppCard(
+              radius: Dimens.rLg,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: Text(actionLabel, style: text.labelLarge?.copyWith(color: AppColors.ink, fontSize: 15))),
+            ),
+          ],
         ),
       ),
     );

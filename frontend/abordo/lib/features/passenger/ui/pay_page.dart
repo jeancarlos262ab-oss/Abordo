@@ -13,16 +13,18 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/route_map.dart';
+import '../../../core/utils/route_path.dart';
 import '../../../core/widgets/ticket_card.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/pulse_dot.dart';
 import '../../../core/widgets/scan_frame.dart';
-import '../../../core/widgets/step_progress.dart';
 import '../../../core/widgets/success_badge.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/state_views.dart';
 import '../domain/passenger_models.dart';
 import '../state/passenger_providers.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Paso 3: pagar y esperar la confirmación. La pantalla se actualiza sola.
 class PayPage extends ConsumerWidget {
@@ -47,26 +49,25 @@ class PayPage extends ConsumerWidget {
     return PopScope(
       canPop: !paid, // ya pagó: solo se sale con "Terminar"
       child: PageScaffold(
+        overlap: false,
         title: 'Pagar mi pasaje',
         showBack: !paid,
         hero: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(paid ? 'Pago recibido' : 'Total a pagar', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
+            Text(paid ? 'Pago recibido' : 'Total a pagar', style: text.bodyLarge?.copyWith(color: AppColors.graphite)),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(Money.format(charge.amountCents), style: text.displayMedium?.copyWith(color: Colors.white)),
+              child: Text(Money.format(charge.amountCents), style: text.displayMedium?.copyWith(color: AppColors.ink)),
             ),
             const SizedBox(height: 2),
-            Text('${charge.unitLabel} · ${charge.route}', style: text.bodyLarge?.copyWith(color: AppColors.silver)),
-            const SizedBox(height: 24),
-            StepProgress(current: paid ? 4 : 3),
+            Text('${charge.unitLabel} · ${charge.route}', style: text.bodyLarge?.copyWith(color: AppColors.graphite)),
           ],
         ),
         child: status.hasError && status.valueOrNull == null
             ? MessageView(
-                icon: Icons.wifi_off_rounded,
+                icon: AppIcons.wifiSlash,
                 message: '${friendlyError(status.error!)}\nSi ya pagaste, tu banco guarda el comprobante.',
                 onAction: () => ref.invalidate(chargeStatusProvider(initial.id)),
               )
@@ -96,36 +97,70 @@ class _Pending extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (charge.paymentLink != null) ...[
-          AppButton(label: 'Abrir mi app del banco', icon: Icons.account_balance_rounded, onPressed: () => _openBank(context)),
-          const SizedBox(height: 28),
+          AppButton(label: 'Abrir mi app del banco', icon: AppIcons.bank, onPressed: () => _openBank(context)),
+          const SizedBox(height: 16),
         ],
         if (charge.qrPayload != null) ...[
-          Text(
-            charge.paymentLink != null ? 'O escanea este código con otro celular:' : 'Escanea este código con la app de tu banco:',
-            style: text.titleMedium,
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: Semantics(
-              label: 'Código QR de cobro CoDi por ${Money.spoken(charge.amountCents)}',
-              child: ScanFrame(
-                child: Container(
-                  margin: const EdgeInsets.all(8),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Dimens.rMd)),
-                  child: QrImageView(data: charge.qrPayload!, size: 200, backgroundColor: Colors.white),
+          TicketCard(
+            top: Column(
+              children: [
+                Text(
+                  charge.paymentLink != null ? 'O escanea este código con otro celular' : 'Escanea este código con la app de tu banco',
+                  textAlign: TextAlign.center,
+                  style: text.titleMedium,
                 ),
-              ),
+                const SizedBox(height: 14),
+                Semantics(
+                  label: 'Código QR de cobro CoDi por ${Money.spoken(charge.amountCents)}',
+                  child: ScanFrame(
+                    child: Container(
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Dimens.rMd)),
+                      child: QrImageView(data: charge.qrPayload!, size: 190, backgroundColor: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            bottom: Row(
+              children: [
+                Expanded(child: Text('Total a pagar', style: text.bodyLarge?.copyWith(color: context.palette.muted))),
+                Text(Money.format(charge.amountCents), style: tabular(text.headlineSmall)),
+              ],
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 16),
         ],
         const _WaitingBanner(),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
+        _RouteCard(charge: charge),
+        const SizedBox(height: 12),
         Center(child: _Countdown(expiresAt: charge.expiresAt)),
         const SizedBox(height: 20),
         AppButton(label: 'Cancelar', kind: ButtonKind.secondary, onPressed: () => Navigator.of(context).pop()),
       ],
+    );
+  }
+}
+
+/// Mapa con el camino por donde va la ruta que el pasajero está pagando.
+class _RouteCard extends StatelessWidget {
+  const _RouteCard({required this.charge});
+  final Charge charge;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Semantics(
+      label: 'Mapa del camino de la ruta ${charge.route}',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(Dimens.rXl),
+        child: DecoratedBox(
+          decoration: BoxDecoration(border: Border.all(color: p.border), borderRadius: BorderRadius.circular(Dimens.rXl)),
+          child: RouteMap(path: charge.routePath ?? RoutePath.demo, height: 300, caption: charge.route.isEmpty ? null : charge.route),
+        ),
+      ),
     );
   }
 }
@@ -143,7 +178,8 @@ class _WaitingBanner extends StatelessWidget {
       child: AppCard(
         color: p.accentSoft,
         shadow: false,
-        padding: const EdgeInsets.all(18),
+        radius: Dimens.rXl,
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             PulseDot(color: p.accent),
@@ -191,7 +227,7 @@ class _CountdownState extends State<_Countdown> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.timer_outlined, size: 20, color: p.muted),
+        Icon(AppIcons.timer, size: 20, color: p.muted),
         const SizedBox(width: 8),
         Text('Tienes $label minutos para pagar.', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: p.muted)),
       ],
@@ -212,25 +248,24 @@ class _Paid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Center(child: SuccessBadge()),
+          const Center(child: SuccessBadge(size: 88)),
           Text('¡Listo!', style: text.displaySmall, textAlign: TextAlign.center),
-          const SizedBox(height: 8),
-          Text('Pagaste ${Money.format(charge.amountCents)}. Ya puedes subir.', style: text.titleLarge?.copyWith(color: p.muted), textAlign: TextAlign.center),
-          const SizedBox(height: 28),
+          const SizedBox(height: 6),
+          Text('Pagaste ${Money.format(charge.amountCents)}. Ya puedes subir.', style: text.titleMedium?.copyWith(color: p.muted), textAlign: TextAlign.center),
+          const SizedBox(height: 22),
           TicketCard(
-            top: Row(
+            strip: Row(
               children: [
-                const IconTile(icon: Icons.directions_bus_rounded, size: 48),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(charge.unitLabel, style: text.titleLarge),
-                      Text(charge.route, style: text.bodyMedium?.copyWith(color: p.muted)),
-                    ],
-                  ),
-                ),
+                Expanded(child: Text(charge.unitLabel, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: 10),
+                Text(Money.format(charge.amountCents), style: tabular(text.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
+              ],
+            ),
+            top: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(charge.unitLabel, style: text.titleLarge),
+                Text(charge.route, style: text.bodyMedium?.copyWith(color: p.muted)),
               ],
             ),
             bottom: Row(
@@ -240,8 +275,10 @@ class _Paid extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          _RouteCard(charge: charge),
           const SizedBox(height: 28),
-          AppButton(label: 'Terminar', icon: Icons.done_rounded, onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst)),
+          AppButton(label: 'Terminar', icon: AppIcons.check, onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst)),
         ],
       ),
     );
@@ -256,7 +293,7 @@ class _Failed extends StatelessWidget {
   Widget build(BuildContext context) {
     final expired = charge.status == ChargeStatus.expired;
     return MessageView(
-      icon: expired ? Icons.timer_off_rounded : Icons.error_outline_rounded,
+      icon: expired ? AppIcons.timer : AppIcons.warningCircle,
       message: expired ? 'Se acabó el tiempo para pagar. No se cobró nada.' : 'El pago no se pudo completar. No se cobró nada.',
       actionLabel: 'Intentar otra vez',
       onAction: () => Navigator.of(context).pop(),

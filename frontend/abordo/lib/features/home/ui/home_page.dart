@@ -1,19 +1,49 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/action_card.dart';
-import '../../../core/widgets/app_card.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/cover_scene.dart';
+import '../../../core/widgets/cover_image.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../../core/widgets/logo.dart';
-import '../../../core/widgets/page_scaffold.dart';
-import '../../auth/domain/session.dart';
-import '../../auth/ui/login_page.dart';
+import '../../../core/widgets/route_map.dart';
+import '../../auth/state/session_controller.dart';
+import '../../passenger/ui/passenger_shell.dart';
 import '../../passenger/ui/unit_entry_page.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Primera pantalla. La cabecera dice la idea (pagar con CoDi); abajo, la acción más usada
 /// —pagar el pasaje, sin cuenta— destacada, y el acceso de chofer y dueño como filas.
-class HomePage extends StatelessWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
+
+  @override
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  // El fondo es el asfalto de la carretera donde va el bus: cambia con la hora igual que la portada.
+  Color _road = CoverScene.at(DateTime.now()).road;
+  Timer? _clock;
+
+  @override
+  void initState() {
+    super.initState();
+    _clock = Timer.periodic(const Duration(seconds: 20), (_) {
+      final next = CoverScene.at(DateTime.now()).road;
+      if (mounted && next != _road) setState(() => _road = next);
+    });
+  }
+
+  @override
+  void dispose() {
+    _clock?.cancel();
+    super.dispose();
+  }
 
   void _open(BuildContext context, Widget page) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
@@ -21,130 +51,187 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return PageScaffold(
-      hero: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Logo(size: 20, color: Colors.white),
-          const SizedBox(height: 28),
-          Text('Paga tu pasaje\ncon CoDi', style: text.displaySmall?.copyWith(color: Colors.white)),
-          const SizedBox(height: 14),
-          const Wrap(
-            spacing: 8,
-            runSpacing: 8,
+    final top = MediaQuery.paddingOf(context).top;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    final coverH = 170.0 + top;
+    final name = ref.watch(sessionProvider).valueOrNull?.user.firstName ?? '';
+
+    // Contenido centrado con el ancho máximo de la app y sus márgenes laterales.
+    Widget centered(Widget child) => Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: Dimens.maxContentWidth),
+            child: Padding(padding: const EdgeInsets.symmetric(horizontal: Dimens.pagePadding), child: child),
+          ),
+        );
+
+    return TweenAnimationBuilder<Color?>(
+      tween: ColorTween(end: _road),
+      duration: const Duration(milliseconds: 2400),
+      builder: (context, bg, child) => Scaffold(backgroundColor: bg ?? _road, body: child),
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: LayoutBuilder(
+          builder: (context, viewport) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: viewport.maxHeight),
+              child: IntrinsicHeight(
+                child: Stack(
             children: [
-              _Perk(icon: Icons.currency_exchange_rounded, label: 'Sin cambio'),
-              _Perk(icon: Icons.percent_rounded, label: 'Sin comisión'),
-              _Perk(icon: Icons.bolt_rounded, label: 'En segundos'),
+              // Portada: ilustración dibujada o la foto que el usuario eligió.
+              Positioned(top: 0, left: 0, right: 0, height: coverH, child: const CoverImage(busScale: .75)),
+              Positioned(
+                top: top + 14,
+                left: Dimens.pagePadding,
+                right: Dimens.pagePadding,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name.isEmpty ? 'Hola,' : 'Hola, $name',
+                            style: text.headlineMedium?.copyWith(color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              const Icon(AppIcons.mapPin, size: 14, color: Colors.white),
+                              const SizedBox(width: 6),
+                              Flexible(child: Text('Paga tu pasaje con CoDi', style: text.bodyMedium?.copyWith(color: Colors.white), overflow: TextOverflow.ellipsis)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const CoverButton(),
+                    // Mi cuenta: vincular el pago, ver el historial y cerrar sesión.
+                    IconButton(
+                      tooltip: 'Mi cuenta',
+                      onPressed: () => _open(context, const PassengerShell()),
+                      icon: const Icon(AppIcons.user, color: Colors.white, size: 24),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(top: coverH + 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    centered(FadeSlideIn(child: _PayCard(onOpen: () => _open(context, const UnitEntryPage())))),
+                    const SizedBox(height: 28),
+                    // Lo que sigue queda siempre pegado al final de la pantalla.
+                    const Spacer(),
+                    centered(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Las rutas se ven en el mapa completo, que se abre desde este botón.
+                          SizedBox(
+                            height: Dimens.buttonHeight,
+                            child: FilledButton.icon(
+                              onPressed: () => _open(context, const RouteMapPage(title: 'Rutas con CoDi')),
+                              icon: const Icon(AppIcons.mapPin, size: 20),
+                              label: const Text('Ver rutas que usan CoDi'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(.14),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: const StadiumBorder(),
+                                textStyle: text.labelLarge,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 28 + bottom),
+                  ],
+                ),
+              ),
             ],
           ),
-        ],
+              ),
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+/// Bloque principal sin contenedor: los datos van directo sobre el fondo (el color de la carretera),
+/// debajo de la portada. Letra grande y blanca de alto contraste, tres pasos claros y un único botón.
+class _PayCard extends StatelessWidget {
+  const _PayCard({required this.onOpen});
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+
+    Widget step(String n, String title, String detail) => Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 38,
+              child: Text(n, style: text.headlineLarge?.copyWith(color: AppColors.roseLight, fontWeight: FontWeight.w800, height: 1.0)),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: text.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700, height: 1.2)),
+                  const SizedBox(height: 3),
+                  Text(detail, style: text.bodyLarge?.copyWith(color: Colors.white70, height: 1.3)),
+                ],
+              ),
+            ),
+          ],
+        );
+
+    return Semantics(
+      container: true,
+      label: 'Paga tu pasaje en tres pasos. Uno: busca el código. Dos: escanéalo. Tres: paga con tu app del banco.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          FadeSlideIn(
-            child: FeatureCard(
-              eyebrow: 'Sin crear cuenta',
-              title: 'Pagar mi pasaje',
-              subtitle: 'Escanea el código de la unidad.',
-              actionLabel: 'Empezar',
-              onTap: () => _open(context, const UnitEntryPage()),
-            ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text('Paga tu pasaje en 3 pasos', maxLines: 1, softWrap: false, style: text.headlineLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800, height: 1.15)),
           ),
-          const SizedBox(height: 32),
-          const SectionLabel('Para choferes y dueños'),
-          FadeSlideIn(
-            delay: const Duration(milliseconds: 90),
-            child: ActionCard(
-              icon: Icons.directions_bus_rounded,
-              title: 'Soy chofer',
-              subtitle: 'Mis cobros del turno',
-              onTap: () => _open(context, const LoginPage(role: Role.driver)),
+          const SizedBox(height: 24),
+          step('1', 'Busca el código', 'Está junto a la puerta o cerca del chofer.'),
+          const SizedBox(height: 20),
+          step('2', 'Escanéalo', 'Apunta la cámara de tu celular al código.'),
+          const SizedBox(height: 20),
+          step('3', 'Paga con tu banco', 'Se abre tu app del banco. Confirma y listo.'),
+          const SizedBox(height: 26),
+          SizedBox(
+            height: Dimens.buttonHeight + 4,
+            child: FilledButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                onOpen();
+              },
+              icon: const Icon(AppIcons.scan, size: 22),
+              label: const Text('Pagar mi pasaje'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.rose,
+                foregroundColor: AppColors.ink,
+                elevation: 0,
+                shape: const StadiumBorder(),
+                textStyle: text.labelLarge,
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          FadeSlideIn(
-            delay: const Duration(milliseconds: 180),
-            child: ActionCard(
-              icon: Icons.storefront_rounded,
-              title: 'Soy dueño',
-              subtitle: 'Mis unidades y mi cuadre',
-              onTap: () => _open(context, const LoginPage(role: Role.owner)),
-            ),
-          ),
-          const SizedBox(height: 32),
-          const SectionLabel('Así de fácil'),
-          const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _HowStep(number: 1, icon: Icons.qr_code_scanner_rounded, label: 'Escanea')),
-              SizedBox(width: 10),
-              Expanded(child: _HowStep(number: 2, icon: Icons.fact_check_rounded, label: 'Confirma')),
-              SizedBox(width: 10),
-              Expanded(child: _HowStep(number: 3, icon: Icons.payments_rounded, label: 'Paga')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Ventaja en forma de píldora translúcida sobre el hero.
-class _Perk extends StatelessWidget {
-  const _Perk({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 7, 14, 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.1),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: Colors.white.withOpacity(.14)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.pink),
-          const SizedBox(width: 6),
-          Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white)),
-        ],
-      ),
-    );
-  }
-}
-
-class _HowStep extends StatelessWidget {
-  const _HowStep({required this.number, required this.icon, required this.label});
-  final int number;
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    final text = Theme.of(context).textTheme;
-    return Semantics(
-      label: 'Paso $number: $label',
-      excludeSemantics: true,
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              color: p.card,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: p.border),
-            ),
-            child: Icon(icon, size: 30, color: p.accent),
-          ),
-          const SizedBox(height: 10),
-          Text('$number. $label', textAlign: TextAlign.center, style: text.labelMedium),
+          Text('Sin comisión · Sin efectivo', textAlign: TextAlign.center, style: text.bodyMedium?.copyWith(color: Colors.white70)),
         ],
       ),
     );

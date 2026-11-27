@@ -20,6 +20,8 @@ class PageScaffold extends StatelessWidget {
     this.bottomBar,
     this.floatingActionButton,
     this.showBack = true,
+    this.overlap = true,
+    this.cover = false,
   });
 
   final Widget child;
@@ -31,31 +33,45 @@ class PageScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final bool showBack;
 
+  /// Con `hero`, el primer bloque del contenido sube y se monta sobre la cabecera (tarjeta flotante).
+  final bool overlap;
+
+  /// La cabecera usa la portada del usuario como fondo.
+  final bool cover;
+
   @override
   Widget build(BuildContext context) {
     final hasHero = hero != null;
     final showBar = hasHero && (title != null || actions != null || (showBack && Navigator.of(context).canPop()));
 
-    final constrainedBody = Align(
+    final lift = hasHero && overlap ? Dimens.heroOverlap : 0.0;
+    Widget constrainedBody = Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: Dimens.maxContentWidth),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(Dimens.pagePadding, hasHero ? 24 : 8, Dimens.pagePadding, 32 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(Dimens.pagePadding, hasHero ? 0 : 8, Dimens.pagePadding, 24 + MediaQuery.paddingOf(context).bottom),
           child: child,
         ),
       ),
     );
+    if (lift > 0) {
+      // La cabecera reserva el espacio y el contenido se pinta (y recibe toques) encima de ella.
+      constrainedBody = Transform.translate(offset: Offset(0, -lift), child: constrainedBody);
+    }
 
     final body = hasHero
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               BrandHero(
+                cover: cover,
+                padding: EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, 24 + lift),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (showBar) HeroTopBar(title: title, actions: actions, showBack: showBack) else const SizedBox(height: 16),
+                    if (showBar) HeroTopBar(title: title, actions: actions, showBack: showBack) else const SizedBox(height: 12),
+                    const SizedBox(height: 4),
                     hero!,
                   ],
                 ),
@@ -75,7 +91,7 @@ class PageScaffold extends StatelessWidget {
               automaticallyImplyLeading: showBack,
             ),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: hasHero || isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        value: isDark && !hasHero ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark, // la cabecera es rosa claro: iconos oscuros
         child: SafeArea(top: !hasHero, bottom: false, child: scroll ? SingleChildScrollView(child: body) : body),
       ),
       bottomNavigationBar: bottomBar,

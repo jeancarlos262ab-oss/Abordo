@@ -11,12 +11,14 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../../core/widgets/status_chip.dart';
-import '../../../core/widgets/step_progress.dart';
 import '../../../core/widgets/submit_mixin.dart';
 import '../../../core/widgets/ticket_card.dart';
+import '../../auth/domain/session.dart';
+import '../../auth/state/session_controller.dart';
 import '../domain/passenger_models.dart';
 import '../state/passenger_providers.dart';
 import 'pay_page.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Paso 2: confirmar unidad y precio. Un solo botón principal.
 class ConfirmPage extends ConsumerWidget {
@@ -32,9 +34,7 @@ class ConfirmPage extends ConsumerWidget {
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Confirma\ntu pasaje', style: text.headlineMedium?.copyWith(color: Colors.white)),
-          const SizedBox(height: 24),
-          const StepProgress(current: 2),
+          Text('Confirma\ntu pasaje', style: text.headlineMedium?.copyWith(color: AppColors.ink)),
         ],
       ),
       child: AsyncValueView<UnitInfo>(
@@ -72,7 +72,13 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
   Future<void> _pay() async {
     Charge? charge;
     final ok = await submit(() async {
-      charge = await ref.read(passengerRepositoryProvider).createCharge(widget.unit.code, payerPhone: _phone.text.trim());
+      // Sin número escrito, un pasajero con sesión paga con el celular de su cuenta vinculada.
+      var phone = _phone.text.trim();
+      if (phone.isEmpty && ref.read(sessionProvider).valueOrNull?.user.role == Role.passenger) {
+        final linked = ref.read(passengerProfileProvider).valueOrNull?.account?.phone ?? '';
+        if (RegExp(r'^\d{10}$').hasMatch(linked)) phone = linked;
+      }
+      charge = await ref.read(passengerRepositoryProvider).createCharge(widget.unit.code, payerPhone: phone);
     });
     if (ok && mounted) {
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PayPage(initial: charge!)));
@@ -93,10 +99,15 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
             label: '${u.label}, ${u.route}, pasaje de ${Money.spoken(u.fareCents)}',
             excludeSemantics: true,
             child: TicketCard(
+              strip: Row(
+                children: [
+                  Expanded(child: Text(u.label, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                  const SizedBox(width: 10),
+                  Text('CoDi', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                ],
+              ),
               top: Row(
                 children: [
-                  const IconTile(icon: Icons.directions_bus_rounded, size: 52),
-                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,7 +148,7 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_rounded, color: p.danger),
+                  Icon(AppIcons.info, color: p.danger),
                   const SizedBox(width: 12),
                   Expanded(child: Text('Esta unidad todavía no recibe pagos con CoDi. Paga en efectivo con el chofer.', style: text.bodyLarge)),
                 ],
@@ -150,7 +161,7 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
               field: LabeledField(
                 label: 'Tu número de celular',
                 helper: 'Te llegará el aviso de pago a tu app del banco.',
-                icon: Icons.phone_iphone_rounded,
+                icon: AppIcons.phone,
                 controller: _phone,
                 digitsOnly: true,
                 maxLength: 10,
@@ -159,7 +170,7 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
               ),
             ),
             const SizedBox(height: 20),
-            AppButton(label: 'Pagar ${Money.format(u.fareCents)} con CoDi', icon: Icons.payments_rounded, loading: busy, onPressed: _pay),
+            AppButton(label: 'Pagar ${Money.format(u.fareCents)} con CoDi', icon: AppIcons.money, loading: busy, onPressed: _pay),
           ],
         ],
       ),

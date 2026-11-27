@@ -54,7 +54,6 @@ class _QrMarkState extends State<QrMark> with SingleTickerProviderStateMixin {
         decoration: BoxDecoration(
           color: widget.background,
           borderRadius: BorderRadius.circular(widget.size * .2),
-          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8))],
         ),
         child: Stack(
           fit: StackFit.expand,

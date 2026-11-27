@@ -11,18 +11,21 @@ export function authService({ users, config }) {
   const session = (u) => ({ token: sign(u), user: publicUser(u) });
   const hash = (secret) => bcrypt.hash(secret, config.isProd ? 12 : 4);
 
+  async function register(role, { name, login, secret }) {
+    if (await users.findByLogin(login)) throw conflict(LOGIN_TAKEN);
+    const secretHash = await hash(secret);
+    try {
+      return session(await users.create({ role, name, login, secretHash }));
+    } catch (err) {
+      if (uniqueViolationOf(err) === "uq_users_login") throw conflict(LOGIN_TAKEN); // dos registros simultáneos
+      throw err;
+    }
+  }
+
   return {
     hash,
-    async registerOwner({ name, login, secret }) {
-      if (await users.findByLogin(login)) throw conflict(LOGIN_TAKEN);
-      const secretHash = await hash(secret);
-      try {
-        return session(await users.create({ role: "owner", name, login, secretHash }));
-      } catch (err) {
-        if (uniqueViolationOf(err) === "uq_users_login") throw conflict(LOGIN_TAKEN); // dos registros simultáneos
-        throw err;
-      }
-    },
+    registerOwner: (data) => register("owner", data),
+    registerPassenger: (data) => register("passenger", data),
     async login({ login, secret }) {
       const u = await users.findByLogin(login);
       // Se compara siempre contra un hash para no revelar si el usuario existe por tiempo de respuesta.

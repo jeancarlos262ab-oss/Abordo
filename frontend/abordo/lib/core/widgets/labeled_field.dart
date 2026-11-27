@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../theme/app_icons.dart';
 
 
 /// Campo con la etiqueta SIEMPRE visible arriba (no desaparece al escribir) y letra grande.
@@ -66,7 +67,7 @@ class _LabeledFieldState extends State<LabeledField> {
             obscureText: _hidden,
             autofocus: widget.autofocus,
             maxLength: widget.maxLength,
-            style: text.titleMedium?.copyWith(fontSize: 17),
+            style: text.titleMedium,
             keyboardType: widget.keyboardType ?? (widget.digitsOnly ? TextInputType.number : null),
             inputFormatters: widget.digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
             textInputAction: widget.textInputAction,
@@ -80,7 +81,7 @@ class _LabeledFieldState extends State<LabeledField> {
                   ? IconButton(
                       tooltip: _hidden ? 'Mostrar' : 'Ocultar',
                       onPressed: () => setState(() => _hidden = !_hidden),
-                      icon: Icon(_hidden ? Icons.visibility_rounded : Icons.visibility_off_rounded, size: 22),
+                      icon: Icon(_hidden ? AppIcons.eye : AppIcons.eyeOff, size: 22),
                     )
                   : null,
             ),
@@ -93,7 +94,7 @@ class _LabeledFieldState extends State<LabeledField> {
 
 /// Aviso corto con icono de información, para pistas que no son parte de un campo.
 class InfoNote extends StatelessWidget {
-  const InfoNote({super.key, required this.message, this.icon = Icons.info_outline_rounded});
+  const InfoNote({super.key, required this.message, this.icon = AppIcons.info});
   final String message;
   final IconData icon;
 

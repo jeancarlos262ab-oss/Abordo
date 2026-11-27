@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 /// Pasos del pago (Código → Confirmar → Pagar). `current` 1..3; con 4 todos quedan completos.
 /// Pensada para ir sobre el hero oscuro.
@@ -9,10 +10,10 @@ class StepProgress extends StatelessWidget {
   final int current;
 
   static const _labels = ['Código', 'Confirmar', 'Pagar'];
+  static const _icons = [AppIcons.scan, AppIcons.checklist, AppIcons.money];
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return Semantics(
       label: current > 3 ? 'Pago completado' : 'Paso $current de 3: ${_labels[current - 1]}',
       excludeSemantics: true,
@@ -23,27 +24,21 @@ class StepProgress extends StatelessWidget {
             if (i > 0)
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 15),
+                  padding: const EdgeInsets.only(top: 21),
                   child: Container(
                     height: 4,
                     decoration: BoxDecoration(
-                      color: i < current ? AppColors.pink : Colors.white.withOpacity(.16),
+                      color: i < current ? AppColors.ink : Colors.black.withOpacity(.08),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
               ),
             SizedBox(
-              width: 64,
+              width: 46,
               child: Column(
                 children: [
-                  _Dot(index: i + 1, state: i + 1 < current ? _S.done : (i + 1 == current ? _S.now : _S.next)),
-                  const SizedBox(height: 6),
-                  Text(
-                    _labels[i],
-                    textAlign: TextAlign.center,
-                    style: text.bodySmall?.copyWith(color: i + 1 <= current ? Colors.white : Colors.white.withOpacity(.55)),
-                  ),
+                  _Dot(icon: _icons[i], state: i + 1 < current ? _S.done : (i + 1 == current ? _S.now : _S.next)),
                 ],
               ),
             ),
@@ -57,28 +52,27 @@ class StepProgress extends StatelessWidget {
 enum _S { done, now, next }
 
 class _Dot extends StatelessWidget {
-  const _Dot({required this.index, required this.state});
-  final int index;
+  const _Dot({required this.icon, required this.state});
+  final IconData icon;
   final _S state;
 
   @override
   Widget build(BuildContext context) {
     final filled = state != _S.next;
     return Container(
-      width: 34,
-      height: 34,
+      width: 46,
+      height: 46,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: filled ? AppColors.pink : Colors.white.withOpacity(.12),
-        boxShadow: state == _S.now ? [BoxShadow(color: AppColors.pink.withOpacity(.35), spreadRadius: 5)] : null,
+        color: filled ? AppColors.ink : Colors.black.withOpacity(.08),
+        boxShadow: state == _S.now ? [BoxShadow(color: Colors.black.withOpacity(.08), spreadRadius: 5)] : null,
       ),
-      child: state == _S.done
-          ? const Icon(Icons.check_rounded, size: 20, color: AppColors.ink)
-          : Text(
-              '$index',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: filled ? AppColors.ink : Colors.white.withOpacity(.7)),
-            ),
+      child: Icon(
+        state == _S.done ? AppIcons.check : icon,
+        size: 24,
+        color: state == _S.done ? AppColors.rose : (filled ? AppColors.rose : AppColors.graphite),
+      ),
     );
   }
 }
