@@ -96,37 +96,37 @@ double _mix(double a, double b, double t) => a + (b - a) * t;
 // y rosa en el horizonte, así el texto blanco de las cabeceras se lee siempre; la ciudad va en negro.
 const _night = _Look(
   skyTop: Color(0xFF0F0D0E), skyBottom: Color(0xFF3A2A31), sun: Color(0xFFFFF3F8),
-  far: Color(0xFF2A2326), near: Color(0xFF141112), ground: Color(0xFF2B2326),
+  far: Color(0xFF2A2326), near: Color(0xFF141112), ground: Color(0xFF2A2A2C),
   road: Color(0xFF110F10), cloud: Color(0x12F7B5CD), night: 1, lit: 1,
 );
 const _dawn = _Look(
   skyTop: Color(0xFF2D2430), skyBottom: Color(0xFFF2A9C3), sun: Color(0xFFFFD6B0),
-  far: Color(0xFF6B4A5E), near: Color(0xFF2A2126), ground: Color(0xFFD79AB2),
+  far: Color(0xFF6B4A5E), near: Color(0xFF2A2126), ground: Color(0xFF9A9A9F),
   road: Color(0xFF231A20), cloud: Color(0x66FFC9B8), night: .55, lit: .55,
 );
 const _morning = _Look(
   skyTop: Color(0xFF3A2E36), skyBottom: Color(0xFFF7B5CD), sun: Color(0xFFFFEBC4),
-  far: Color(0xFF7A5568), near: Color(0xFF2B2327), ground: Color(0xFFF7B5CD),
+  far: Color(0xFF7A5568), near: Color(0xFF2B2327), ground: Color(0xFFBDBDC2),
   road: Color(0xFF231F20), cloud: Color(0x66FFFFFF), night: .05, lit: .08,
 );
 const _day = _Look(
   skyTop: Color(0xFF40343C), skyBottom: Color(0xFFF7B5CD), sun: Color(0xFFFFF1D6),
-  far: Color(0xFF8A5F73), near: Color(0xFF231F20), ground: Color(0xFFF7B5CD),
+  far: Color(0xFF8A5F73), near: Color(0xFF231F20), ground: Color(0xFFBDBDC2),
   road: Color(0xFF231F20), cloud: Color(0x52FFFFFF), night: 0, lit: 0,
 );
 const _golden = _Look(
   skyTop: Color(0xFF3D2E36), skyBottom: Color(0xFFF5A8C0), sun: Color(0xFFFFE2A8),
-  far: Color(0xFF7E5266), near: Color(0xFF231A1E), ground: Color(0xFFEFA6BE),
+  far: Color(0xFF7E5266), near: Color(0xFF231A1E), ground: Color(0xFFB0B0B5),
   road: Color(0xFF231A1E), cloud: Color(0x66FFD9B8), night: .1, lit: .12,
 );
 const _sunset = _Look(
   skyTop: Color(0xFF2E2230), skyBottom: Color(0xFFE98AAE), sun: Color(0xFFFFC98A),
-  far: Color(0xFF5E3F52), near: Color(0xFF1E171B), ground: Color(0xFFD58CA8),
+  far: Color(0xFF5E3F52), near: Color(0xFF1E171B), ground: Color(0xFF8F8F94),
   road: Color(0xFF1E161A), cloud: Color(0x70FFB59E), night: .3, lit: .4,
 );
 const _dusk = _Look(
   skyTop: Color(0xFF1A1320), skyBottom: Color(0xFF9C5878), sun: Color(0xFFFFD0B0),
-  far: Color(0xFF3E2C3A), near: Color(0xFF1A1418), ground: Color(0xFF7E4D66),
+  far: Color(0xFF3E2C3A), near: Color(0xFF1A1418), ground: Color(0xFF55555A),
   road: Color(0xFF181216), cloud: Color(0x40E8A0C0), night: .78, lit: .9,
 );
 

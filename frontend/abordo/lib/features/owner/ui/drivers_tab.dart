@@ -184,7 +184,16 @@ class _DriverFormState extends ConsumerState<_DriverForm> with SubmitMixin<_Driv
               helper: 'Con este usuario entrará a la app.',
               icon: AppIcons.user,
               controller: _login,
-              validator: Validators.all([Validators.minLength(3, 'El usuario'), (v) => RegExp(r'^[\w.@-]+$').hasMatch(v!.trim()) ? null : 'Usa letras, números, punto o guion, sin espacios.']),
+              validator: Validators.all([
+                Validators.minLength(3, 'El usuario'),
+                (v) => RegExp(r'^[\w.@-]+$').hasMatch(v!.trim()) ? null : 'Usa letras, números, punto o guion, sin espacios.',
+                // No se permiten usuarios repetidos (sin importar mayúsculas o minúsculas).
+                (v) {
+                  final taken = ref.read(driversProvider).valueOrNull ?? const <DriverItem>[];
+                  final wanted = v!.trim().toLowerCase();
+                  return taken.any((d) => d.login.trim().toLowerCase() == wanted) ? 'Ese usuario ya existe. Elige otro.' : null;
+                },
+              ]),
             ),
           LabeledField(
             label: _editing ? 'PIN nuevo (opcional)' : 'PIN',

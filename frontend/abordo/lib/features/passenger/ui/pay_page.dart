@@ -10,9 +10,12 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/services/voice_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/bottom_action_bar.dart';
+import '../../../core/widgets/bus_image.dart';
 import '../../../core/widgets/route_map.dart';
 import '../../../core/utils/route_path.dart';
 import '../../../core/widgets/ticket_card.dart';
@@ -51,6 +54,16 @@ class PayPage extends ConsumerWidget {
       child: PageScaffold(
         overlap: false,
         title: 'Pagar mi pasaje',
+        // Cancelar / Terminar quedan fijos hasta abajo.
+        bottomBar: switch (charge.status) {
+          ChargeStatus.pending when !(status.hasError && status.valueOrNull == null) => BottomActionBar(children: [
+              AppButton(label: 'Cancelar', kind: ButtonKind.secondary, onPressed: () => Navigator.of(context).pop()),
+            ]),
+          ChargeStatus.paid => BottomActionBar(children: [
+              AppButton(label: 'Terminar', icon: AppIcons.check, onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst)),
+            ]),
+          _ => null,
+        },
         showBack: !paid,
         hero: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,6 +93,9 @@ class PayPage extends ConsumerWidget {
     );
   }
 }
+
+/// Folio corto del cobro (primeros 8 caracteres del id, en mayúsculas).
+String _folio(Charge c) => (c.id.length > 8 ? c.id.substring(0, 8) : c.id).toUpperCase();
 
 class _Pending extends StatelessWidget {
   const _Pending({required this.charge});
@@ -123,12 +139,19 @@ class _Pending extends StatelessWidget {
                 ),
               ],
             ),
+            details: TicketInfoGrid(items: [
+              TicketInfo('UNIDAD', charge.unitLabel, icon: AppIcons.bus),
+              TicketInfo('RUTA', charge.route, icon: AppIcons.path),
+              TicketInfo('FOLIO', _folio(charge), icon: AppIcons.receipt),
+              TicketInfo('VENCE', AppDates.time(charge.expiresAt.toUtc().toIso8601String()), icon: AppIcons.timer),
+            ]),
             bottom: Row(
               children: [
                 Expanded(child: Text('Total a pagar', style: text.bodyLarge?.copyWith(color: context.palette.muted))),
                 Text(Money.format(charge.amountCents), style: tabular(text.headlineSmall)),
               ],
             ),
+            footer: TicketBarcode(seed: _folio(charge)),
           ),
           const SizedBox(height: 16),
         ],
@@ -137,8 +160,6 @@ class _Pending extends StatelessWidget {
         _RouteCard(charge: charge),
         const SizedBox(height: 12),
         Center(child: _Countdown(expiresAt: charge.expiresAt)),
-        const SizedBox(height: 20),
-        AppButton(label: 'Cancelar', kind: ButtonKind.secondary, onPressed: () => Navigator.of(context).pop()),
       ],
     );
   }
@@ -235,9 +256,19 @@ class _CountdownState extends State<_Countdown> {
   }
 }
 
-class _Paid extends StatelessWidget {
+class _Paid extends StatefulWidget {
   const _Paid({required this.charge});
   final Charge charge;
+
+  @override
+  State<_Paid> createState() => _PaidState();
+}
+
+class _PaidState extends State<_Paid> {
+  Charge get charge => widget.charge;
+
+  /// Momento en que se vio el pago confirmado (se fija una sola vez).
+  final _paidAt = DateTime.now().toUtc().toIso8601String();
 
   @override
   Widget build(BuildContext context) {
@@ -261,24 +292,37 @@ class _Paid extends StatelessWidget {
                 Text(Money.format(charge.amountCents), style: tabular(text.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
               ],
             ),
-            top: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            top: Row(
               children: [
-                Text(charge.unitLabel, style: text.titleLarge),
-                Text(charge.route, style: text.bodyMedium?.copyWith(color: p.muted)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(charge.unitLabel, style: text.titleLarge),
+                      Text(charge.route, style: text.bodyMedium?.copyWith(color: p.muted)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const BusImage(width: 110),
               ],
             ),
+            details: TicketInfoGrid(items: [
+              TicketInfo('FOLIO', _folio(charge), icon: AppIcons.receipt),
+              TicketInfo('FECHA Y HORA', AppDates.dayTime(_paidAt), icon: AppIcons.calendar),
+              const TicketInfo('MÉTODO', 'CoDi · app de tu banco', icon: AppIcons.bank),
+              const TicketInfo('ESTADO', 'Pagado', icon: AppIcons.checkCircle),
+            ]),
             bottom: Row(
               children: [
                 Expanded(child: Text('Total pagado', style: text.bodyLarge?.copyWith(color: p.muted))),
                 Text(Money.format(charge.amountCents), style: tabular(text.headlineSmall)),
               ],
             ),
+            footer: TicketBarcode(seed: _folio(charge)),
           ),
           const SizedBox(height: 16),
           _RouteCard(charge: charge),
-          const SizedBox(height: 28),
-          AppButton(label: 'Terminar', icon: AppIcons.check, onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst)),
         ],
       ),
     );

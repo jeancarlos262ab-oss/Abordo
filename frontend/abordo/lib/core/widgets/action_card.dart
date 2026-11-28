@@ -117,8 +117,8 @@ class FeatureCard extends StatelessWidget {
                   Container(
                     width: 60,
                     height: 60,
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.rose),
-                    child: const Icon(AppIcons.scan, color: AppColors.ink, size: 28),
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.ink),
+                    child: const Icon(AppIcons.scan, color: Colors.white, size: 28),
                   ),
                 ],
               ),

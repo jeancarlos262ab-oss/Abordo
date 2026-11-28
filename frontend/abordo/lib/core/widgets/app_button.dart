@@ -19,6 +19,9 @@ enum ButtonKind {
 
   /// Enlace-botón sin fondo.
   text,
+
+  /// Rosa oscurito con texto negro (continuar).
+  rose,
 }
 
 /// Botón grande y claro: icono + texto, 56 px de alto, vibración leve al tocar.
@@ -40,31 +43,14 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final p = context.palette;
     final enabled = onPressed != null && !loading;
 
-    late final Color bg;
-    late final Color fg;
-    var side = BorderSide.none;
-    switch (kind) {
-      case ButtonKind.primary:
-        bg = scheme.primary;
-        fg = scheme.onPrimary;
-      case ButtonKind.secondary:
-        bg = Colors.transparent;
-        fg = p.text;
-        side = BorderSide(color: p.text.withOpacity(.3), width: 1);
-      case ButtonKind.danger:
-        bg = p.danger;
-        fg = scheme.onError;
-      case ButtonKind.dangerSoft:
-        bg = p.dangerSoft;
-        fg = p.danger;
-      case ButtonKind.text:
-        bg = Colors.transparent;
-        fg = p.text;
-    }
+    // Todos los botones, sin excepción: fondo negro con texto e iconos blancos.
+    // [kind] se conserva para no tocar las pantallas que ya lo usan.
+    final isRose = kind == ButtonKind.rose;
+    final Color bg = isRose ? AppColors.pinkDeep : AppColors.ink;
+    final Color fg = isRose ? AppColors.ink : Colors.white;
+    const side = BorderSide.none;
 
     final child = loading
         ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.8, color: fg))
@@ -85,18 +71,6 @@ class AppButton extends StatelessWidget {
     final VoidCallback? cb = enabled ? tap : (loading ? () {} : null);
     final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(99), side: side);
     final labelStyle = Theme.of(context).textTheme.labelLarge;
-
-    if (kind == ButtonKind.text) {
-      return TextButton(
-        onPressed: cb,
-        style: TextButton.styleFrom(
-          minimumSize: const Size.fromHeight(Dimens.minTap),
-          foregroundColor: fg,
-          textStyle: labelStyle,
-        ),
-        child: child,
-      );
-    }
 
     return FilledButton(
       onPressed: cb,

@@ -30,6 +30,7 @@ dependencies:
   flutter_svg: ^2.0.10
   maplibre_gl: ^0.26.2
   geolocator: ^14.0.2
+  animated_background: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -51,4 +52,5 @@ flutter:
   assets:
     - assets/clouds/
     - assets/mascot/
-    - assets/tickets/
+    - assets/bus/
+    - assets/trees/

@@ -90,8 +90,7 @@ class HeroTopBar extends StatelessWidget {
                 ? Align(alignment: Alignment.centerLeft, child: IconButton(
                     onPressed: () => Navigator.of(context).maybePop(),
                     tooltip: 'Regresar',
-                    color: AppColors.ink,
-                    style: IconButton.styleFrom(fixedSize: const Size.square(44)),
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: AppColors.ink, fixedSize: const Size.square(44)),
                     icon: const Icon(AppIcons.back, size: 24),
                   ))
                 : null,

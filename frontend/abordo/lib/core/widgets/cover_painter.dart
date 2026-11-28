@@ -25,6 +25,7 @@ class CoverPainter extends CustomPainter {
     this.busScale = 1,
     required this.showBus,
     this.clouds = const [],
+    this.plants = const [],
     super.repaint,
   });
 
@@ -39,6 +40,9 @@ class CoverPainter extends CustomPainter {
 
   /// Nubes SVG ya cargadas (cloud_1..3). Si está vacía se usa la nube dibujada en código.
   final List<PictureInfo> clouds;
+
+  /// PNG de vegetación ya cargados, en este orden: árbol, pino, palmera, arbusto.
+  final List<ui.Image> plants;
 
   static const _warm = Color(0xFFFFE2A6);
 
@@ -56,7 +60,7 @@ class CoverPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CoverPainter old) => old.layer != layer || old.compact != compact || old.busScale != busScale || old.showBus != showBus || old.clouds != clouds;
+  bool shouldRepaint(CoverPainter old) => old.layer != layer || old.compact != compact || old.busScale != busScale || old.showBus != showBus || old.clouds != clouds || old.plants != plants;
 
   // ───────────────────────────── capa trasera ─────────────────────────────
 
@@ -277,85 +281,66 @@ class CoverPainter extends CustomPainter {
     }
   }
 
-  /// Árboles y arbustos a la orilla de la carretera (sin personas). Todo escala con [k], se tiñe con
-  /// la luz del momento (más oscuro de noche) y las copas se mecen apenas con el viento.
+  /// Filtro de color de la vegetación: la misma luz de la escena (más oscuro y frío de noche,
+  /// cálido al amanecer y atardecer). Así los PNG cambian solos con la hora del día.
+  ColorFilter _treeFilter(CoverScene sc) {
+    final dim = (.12 + .6 * sc.night).clamp(0.0, 1.0).toDouble();
+    final tint = Color.lerp(sc.skyBottom, sc.near, dim)!;
+    final amount = (.10 + .58 * sc.night).clamp(0.0, 1.0).toDouble();
+    return ColorFilter.mode(tint.withOpacity(amount), BlendMode.srcATop);
+  }
+
+  /// Dibuja [img] apoyado en [base], con la altura [height] (mantiene la proporción) y un balanceo
+  /// leve con el viento. Devuelve el ancho dibujado.
+  double _plant(Canvas canvas, ui.Image img, Offset base, double height, double sway, Paint paint) {
+    final w = height * img.width / img.height;
+    canvas.save();
+    canvas.translate(base.dx, base.dy);
+    canvas.rotate(sway * .006);
+    canvas.drawImageRect(
+      img,
+      Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+      Rect.fromLTWH(-w / 2, -height, w, height),
+      paint,
+    );
+    canvas.restore();
+    return w;
+  }
+
+  /// Árboles, pinos, palmeras y arbustos (PNG) a la orilla de la carretera, teñidos con la luz del
+  /// momento. Si los PNG aún no cargaron no se dibuja nada.
   void _vegetation(Canvas canvas, Size size, CoverScene sc, double s, double k, double roadTop) {
+    if (plants.length < 4) return;
     final w = size.width;
     final h = size.height;
     final rnd = _Rng(21);
-    final dim = (.18 + .6 * sc.night).clamp(0.0, 1.0).toDouble();
-    Color tone(Color c) => Color.lerp(Color.lerp(c, sc.skyBottom, .1)!, sc.near, dim)!;
-
-    final trunk = Paint()..color = tone(const Color(0xFF6B4A3E));
-    final greens = [const Color(0xFF4FA37A), const Color(0xFF3E8F68), const Color(0xFF5DB386)];
-    const jacaranda = Color(0xFFA77BCB); // jacaranda mexicana
-    const rosado = Color(0xFFEE9FBF); // árbol en flor, rosa de la marca
-
-    Color leaf(double r) {
-      if (r > .88) return jacaranda;
-      if (r > .78) return rosado;
-      return greens[(r * 10).floor() % greens.length];
-    }
+    final paint = Paint()
+      ..colorFilter = _treeFilter(sc)
+      ..filterQuality = FilterQuality.medium;
 
     var x = 10.0 * k;
     var i = 0;
     while (x < w + 20 * k) {
       final kind = rnd.next();
-      final hue = rnd.next();
+      rnd.next(); // se conserva la secuencia aleatoria de antes
       final sz = rnd.next();
       final sway = math.sin(2 * math.pi * (s / 6 + i * .23)) * 1.2 * k;
       final base = Offset(x, roadTop + 1);
-      final c1 = tone(leaf(hue));
-      final c2 = c1; // un solo tono por planta: sin sombras ni brillos
 
+      // Algunos árboles y pinos salen mucho más grandes: dan sensación de estar cerca.
+      final near = sz > .66 ? 1.7 : 1.0;
+      final double width;
       if (kind < .38) {
-        // Árbol de copa redonda.
-        final th = h * (.07 + .05 * sz);
-        final r = h * (.05 + .035 * sz);
-        canvas.drawRect(Rect.fromLTWH(x - 1.6 * k, base.dy - th, 3.2 * k, th), trunk);
-        final c = Offset(x + sway, base.dy - th - r * .55);
-        canvas.drawCircle(c.translate(-r * .55, r * .25), r * .72, Paint()..color = c2);
-        canvas.drawCircle(c.translate(r * .55, r * .25), r * .72, Paint()..color = c2);
-        canvas.drawCircle(c, r, Paint()..color = c1);
+        width = _plant(canvas, plants[0], base, h * (.15 + .05 * sz) * near, sway * near, paint); // árbol
       } else if (kind < .58) {
-        // Ciprés: copa alargada.
-        final ch = h * (.15 + .07 * sz);
-        final cw = h * (.03 + .012 * sz);
-        canvas.drawRect(Rect.fromLTWH(x - 1.2 * k, base.dy - 5 * k, 2.4 * k, 5 * k), trunk);
-        canvas.drawOval(Rect.fromLTWH(x - cw + sway * .6, base.dy - ch - 3 * k, cw * 2, ch), Paint()..color = c2);
+        width = _plant(canvas, plants[1], base, h * (.18 + .06 * sz) * near, sway * near, paint); // pino
       } else if (kind < .7) {
-        // Palmera.
-        final th = h * (.12 + .06 * sz);
-        final top = Offset(x + sway, base.dy - th);
-        final stem = Path()
-          ..moveTo(x - 1.6 * k, base.dy)
-          ..quadraticBezierTo(x + 3 * k, base.dy - th * .5, top.dx - 1 * k, top.dy)
-          ..lineTo(top.dx + 1 * k, top.dy)
-          ..quadraticBezierTo(x + 5 * k, base.dy - th * .5, x + 1.6 * k, base.dy)
-          ..close();
-        canvas.drawPath(stem, trunk);
-        final frond = Paint()
-          ..color = c1
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeWidth = 3 * k;
-        final fl = h * .065;
-        for (var j = 0; j < 7; j++) {
-          final a = math.pi * (1.08 + j * .14) + sway * .02;
-          final tip = top + Offset(math.cos(a) * fl, math.sin(a) * fl * .55 + fl * .35);
-          final mid = top + Offset(math.cos(a) * fl * .5, math.sin(a) * fl * .9);
-          canvas.drawPath(Path()..moveTo(top.dx, top.dy)..quadraticBezierTo(mid.dx, mid.dy, tip.dx, tip.dy), frond);
-        }
+        width = _plant(canvas, plants[2], base, h * (.36 + .10 * sz), sway, paint); // palmera: alta, de tronco delgado
       } else {
-        // Arbusto bajo, en grupo de dos o tres bolas.
-        final r = h * (.022 + .016 * sz);
-        canvas.drawOval(Rect.fromCenter(center: Offset(x, base.dy - r * .6), width: r * 3.4, height: r * 1.5), Paint()..color = c2);
-        canvas.drawCircle(Offset(x - r * .8, base.dy - r * .8), r, Paint()..color = c2);
-        canvas.drawCircle(Offset(x + r * .7, base.dy - r * .85), r * .9, Paint()..color = c1);
-        canvas.drawCircle(Offset(x - r * .05 + sway * .3, base.dy - r * 1.25), r * .95, Paint()..color = c1);
+        width = _plant(canvas, plants[3], base, h * (.05 + .03 * sz), sway * .5, paint); // arbusto
       }
       i++;
-      x += (30 + rnd.next() * 46) * k;
+      x += math.max(width * .8, (30 + rnd.next() * 46) * k);
     }
   }
 
@@ -407,7 +392,6 @@ class CoverPainter extends CustomPainter {
         switch (f) {
           case Festival.navidad:
             _roofLights(canvas, sc, roofs, s, const [Color(0xFFFF5A5F), Color(0xFFFFD166), Color(0xFF4CC38A), Color(0xFF7BDFF2), Colors.white]);
-            _trees(canvas, size, s);
           case Festival.reyes:
             _roofLights(canvas, sc, roofs, s, const [Color(0xFFFFD166), Color(0xFFFFF1B8)]);
           case Festival.cincoMayo:
@@ -468,40 +452,6 @@ class CoverPainter extends CustomPainter {
         j++;
       }
     }
-  }
-
-  /// Dos pinos con luces y estrella, a la izquierda del camino.
-  void _trees(Canvas canvas, Size size, double s) {
-    final h = size.height;
-    final base = h * .88;
-    void tree(double cx, double k) {
-      final th = h * .3 * k;
-      final tw = h * .19 * k;
-      canvas.drawRect(Rect.fromLTWH(cx - tw * .06, base - th * .08, tw * .12, th * .08), Paint()..color = const Color(0xFF5B3A29));
-      for (var i = 0; i < 3; i++) {
-        final top = base - th + i * th * .27;
-        final bottom = top + th * .42;
-        final half = tw / 2 * (.55 + .22 * i);
-        final p = Path()
-          ..moveTo(cx, top)
-          ..lineTo(cx + half, bottom)
-          ..lineTo(cx - half, bottom)
-          ..close();
-        canvas.drawPath(p, Paint()..color = Color.lerp(const Color(0xFF1E6B4B), const Color(0xFF2A8A60), i / 2)!);
-      }
-      const colors = [Color(0xFFFF5A5F), Color(0xFFFFD166), Colors.white, Color(0xFF7BDFF2)];
-      for (var i = 0; i < 14; i++) {
-        final fy = .16 + _h(i, 5) * .76;
-        final half = tw / 2 * (.2 + .8 * fy) * .8;
-        final p = Offset(cx + (_h(i, 6) * 2 - 1) * half, base - th + th * fy);
-        final tw2 = .5 + .5 * math.sin(2 * math.pi * (s / 3 + _h(i, 7)));
-        canvas.drawCircle(p, 2.2, Paint()..color = colors[i % colors.length].withOpacity(.45 + .55 * tw2));
-      }
-      _star4(canvas, Offset(cx, base - th - 2), tw * .17, const Color(0xFFFFD166));
-    }
-
-    tree(size.width * .1, 1.0);
-    tree(size.width * .22, .78);
   }
 
   /// Banderines de papel picado colgados de lado a lado.

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:animated_background/animated_background.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/cover_scene.dart';
+import '../../../core/utils/motion.dart';
 import '../../../core/widgets/cover_image.dart';
 import '../../../core/widgets/fade_slide_in.dart';
 import '../../../core/widgets/logo.dart';
@@ -108,12 +110,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                     ),
                     const CoverButton(),
-                    // Mi cuenta: vincular el pago, ver el historial y cerrar sesión.
-                    IconButton(
-                      tooltip: 'Mi cuenta',
-                      onPressed: () => _open(context, const PassengerShell()),
-                      icon: const Icon(AppIcons.user, color: Colors.white, size: 24),
-                    ),
                   ],
                 ),
               ),
@@ -123,33 +119,30 @@ class _HomePageState extends ConsumerState<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     centered(FadeSlideIn(child: _PayCard(onOpen: () => _open(context, const UnitEntryPage())))),
-                    const SizedBox(height: 28),
-                    // Lo que sigue queda siempre pegado al final de la pantalla.
+                    // Lo que sigue queda pegado al final de la pantalla.
                     const Spacer(),
+                    const SizedBox(height: 28),
+                    // Las rutas se ven en el mapa completo, que se abre desde este botón.
                     centered(
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Las rutas se ven en el mapa completo, que se abre desde este botón.
-                          SizedBox(
-                            height: Dimens.buttonHeight,
-                            child: FilledButton.icon(
-                              onPressed: () => _open(context, const RouteMapPage(title: 'Rutas con CoDi')),
-                              icon: const Icon(AppIcons.mapPin, size: 20),
-                              label: const Text('Ver rutas que usan CoDi'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(.14),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: const StadiumBorder(),
-                                textStyle: text.labelLarge,
-                              ),
-                            ),
+                      SizedBox(
+                        width: double.infinity,
+                        height: Dimens.buttonHeight,
+                        child: FilledButton.icon(
+                          onPressed: () => _open(context, const RouteMapPage(title: 'Rutas con CoDi')),
+                          icon: const Icon(AppIcons.mapPin, size: 20),
+                          label: const Text('Ver rutas que usan CoDi'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.ink,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: const StadiumBorder(),
+                            textStyle: text.labelLarge,
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                    SizedBox(height: 28 + bottom),
+                    const SizedBox(height: Dimens.pagePadding),
+                    _AccountTile(bottomInset: bottom, onOpen: () => _open(context, const PassengerShell())),
                   ],
                 ),
               ),
@@ -164,8 +157,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-/// Bloque principal sin contenedor: los datos van directo sobre el fondo (el color de la carretera),
-/// debajo de la portada. Letra grande y blanca de alto contraste, tres pasos claros y un único botón.
+/// Bloque principal: un contenedor sin fondo, solo contorno. A la izquierda el título y los tres
+/// pasos; a la derecha el botón de pagar, redondo.
 class _PayCard extends StatelessWidget {
   const _PayCard({required this.onOpen});
   final VoidCallback onOpen;
@@ -178,16 +171,16 @@ class _PayCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 38,
-              child: Text(n, style: text.headlineLarge?.copyWith(color: AppColors.roseLight, fontWeight: FontWeight.w800, height: 1.0)),
+              width: 28,
+              child: Text(n, style: text.titleLarge?.copyWith(color: AppColors.roseLight, fontWeight: FontWeight.w800, height: 1.1)),
             ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: text.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700, height: 1.2)),
-                  const SizedBox(height: 3),
-                  Text(detail, style: text.bodyLarge?.copyWith(color: Colors.white70, height: 1.3)),
+                  Text(title, style: text.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700, height: 1.2)),
+                  const SizedBox(height: 2),
+                  Text(detail, style: text.bodyMedium?.copyWith(color: Colors.white70, height: 1.25)),
                 ],
               ),
             ),
@@ -197,42 +190,146 @@ class _PayCard extends StatelessWidget {
     return Semantics(
       container: true,
       label: 'Paga tu pasaje en tres pasos. Uno: busca el código. Dos: escanéalo. Tres: paga con tu app del banco.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text('Paga tu pasaje en 3 pasos', maxLines: 1, softWrap: false, style: text.headlineLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800, height: 1.15)),
-          ),
-          const SizedBox(height: 24),
-          step('1', 'Busca el código', 'Está junto a la puerta o cerca del chofer.'),
-          const SizedBox(height: 20),
-          step('2', 'Escanéalo', 'Apunta la cámara de tu celular al código.'),
-          const SizedBox(height: 20),
-          step('3', 'Paga con tu banco', 'Se abre tu app del banco. Confirma y listo.'),
-          const SizedBox(height: 26),
-          SizedBox(
-            height: Dimens.buttonHeight + 4,
-            child: FilledButton.icon(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                onOpen();
-              },
-              icon: const Icon(AppIcons.scan, size: 22),
-              label: const Text('Pagar mi pasaje'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.rose,
-                foregroundColor: AppColors.ink,
-                elevation: 0,
-                shape: const StadiumBorder(),
-                textStyle: text.labelLarge,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(.55), width: 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Paga tu pasaje en 3 pasos', style: text.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800, height: 1.15)),
+                  const SizedBox(height: 14),
+                  step('1', 'Busca el código', 'Junto a la puerta o cerca del chofer.'),
+                  const SizedBox(height: 12),
+                  step('2', 'Escanéalo', 'Apunta la cámara al código.'),
+                  const SizedBox(height: 12),
+                  step('3', 'Paga con tu banco', 'Confirma en tu app y listo.'),
+                ],
               ),
             ),
+            const SizedBox(width: 14),
+            Semantics(
+              button: true,
+              label: 'Pagar mi pasaje',
+              excludeSemantics: true,
+              child: SizedBox(
+                width: 96,
+                height: 96,
+                child: FilledButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    onOpen();
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.rose,
+                    foregroundColor: AppColors.ink,
+                    elevation: 0,
+                    padding: EdgeInsets.zero,
+                    shape: const CircleBorder(),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(AppIcons.scan, size: 28),
+                      const SizedBox(height: 4),
+                      Text('Pagar mi\npasaje', textAlign: TextAlign.center, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w800, height: 1.1)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sección "Mi cuenta" al fondo de la app: franja rosa sólida de lado a lado (sin márgenes), baja,
+/// con partículas animadas (paquete animated_background), el perfil en círculo negro y la flecha
+/// en círculo blanco. Llega hasta el borde inferior; [bottomInset] es la zona segura del teléfono.
+class _AccountTile extends StatefulWidget {
+  const _AccountTile({required this.onOpen, this.bottomInset = 0});
+  final VoidCallback onOpen;
+  final double bottomInset;
+
+  @override
+  State<_AccountTile> createState() => _AccountTileState();
+}
+
+class _AccountTileState extends State<_AccountTile> with TickerProviderStateMixin {
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final still = reduceMotion(context);
+    final row = Padding(
+      padding: EdgeInsets.fromLTRB(Dimens.pagePadding, 10, Dimens.pagePadding, 10 + widget.bottomInset),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
+            child: const Icon(AppIcons.user, color: Colors.white, size: 20),
           ),
-          const SizedBox(height: 12),
-          Text('Sin comisión · Sin efectivo', textAlign: TextAlign.center, style: text.bodyMedium?.copyWith(color: Colors.white70)),
+          const SizedBox(width: 12),
+          Expanded(child: Text('Mi cuenta', style: text.titleMedium?.copyWith(color: AppColors.ink, fontWeight: FontWeight.w800))),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            child: const Icon(Icons.arrow_forward_rounded, color: AppColors.ink, size: 18),
+          ),
         ],
+      ),
+    );
+
+    return Semantics(
+      button: true,
+      label: 'Mi cuenta. Vincula tu pago, mira tu historial o cierra sesión.',
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.rose,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            widget.onOpen();
+          },
+          // El contenido manda el alto; las partículas van detrás y se estiran a su tamaño.
+          child: ClipRect(
+            child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              if (!still)
+                Positioned.fill(
+                  child: AnimatedBackground(
+                    vsync: this,
+                    behaviour: RandomParticleBehaviour(
+                      options: const ParticleOptions(
+                        baseColor: Colors.white,
+                        spawnMinRadius: 2,
+                        spawnMaxRadius: 6,
+                        spawnMinSpeed: 6,
+                        spawnMaxSpeed: 18,
+                        minOpacity: .15,
+                        maxOpacity: .5,
+                        particleCount: 24,
+                      ),
+                    ),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              row,
+            ],
+          ),
+          ),
+        ),
       ),
     );
   }

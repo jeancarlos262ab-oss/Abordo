@@ -87,7 +87,7 @@ class _UnitCardState extends State<_UnitCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
@@ -107,6 +107,26 @@ class _UnitCardState extends State<_UnitCard> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
+                // Acciones rápidas en la esquina superior derecha, junto al estado.
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      QuickAction(compact: true, icon: AppIcons.printer, label: 'Imprimir', semanticLabel: 'Imprimir QR en PDF', primary: true, loading: _printing, onTap: _print),
+                      const SizedBox(width: 8),
+                      QuickAction(
+                        compact: true,
+                        icon: AppIcons.qr,
+                        label: 'Ver QR',
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => UnitQrPage(unit: unit))),
+                      ),
+                      const SizedBox(width: 8),
+                      QuickAction(compact: true, icon: AppIcons.pencil, label: 'Editar', onTap: () => _openForm(context, unit: unit)),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 18),
@@ -116,7 +136,7 @@ class _UnitCardState extends State<_UnitCard> {
                 // El QR sí lleva fondo blanco: es lo que permite que la cámara lo lea.
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Dimens.rSm)),
+                  decoration: const BoxDecoration(color: Colors.white), // cuadrado, sin esquinas redondeadas
                   child: ExcludeSemantics(child: QrImageView(data: unit.qrContent, size: 84, backgroundColor: Colors.white, padding: EdgeInsets.zero)),
                 ),
                 const SizedBox(width: 18),
@@ -140,29 +160,6 @@ class _UnitCardState extends State<_UnitCard> {
             ),
             const SizedBox(height: 4),
             Text('Los pasajeros escanean el QR o escriben este número para pagar.', style: text.bodySmall?.copyWith(color: muted)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: QuickAction(
-                    icon: AppIcons.printer,
-                    label: 'Imprimir',
-                    semanticLabel: 'Imprimir QR en PDF',
-                    primary: true,
-                    loading: _printing,
-                    onTap: _print,
-                  ),
-                ),
-                Expanded(
-                  child: QuickAction(
-                    icon: AppIcons.qr,
-                    label: 'Ver QR',
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => UnitQrPage(unit: unit))),
-                  ),
-                ),
-                Expanded(child: QuickAction(icon: AppIcons.pencil, label: 'Editar', onTap: () => _openForm(context, unit: unit))),
-              ],
-            ),
           ],
         ),
       ),

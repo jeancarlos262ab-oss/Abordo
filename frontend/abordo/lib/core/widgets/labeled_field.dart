@@ -81,6 +81,7 @@ class _LabeledFieldState extends State<LabeledField> {
                   ? IconButton(
                       tooltip: _hidden ? 'Mostrar' : 'Ocultar',
                       onPressed: () => setState(() => _hidden = !_hidden),
+                      style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant),
                       icon: Icon(_hidden ? AppIcons.eye : AppIcons.eyeOff, size: 22),
                     )
                   : null,

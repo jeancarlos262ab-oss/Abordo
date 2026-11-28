@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/app_colors.dart';
@@ -11,7 +13,7 @@ import '../utils/motion.dart';
 import 'cover_painter.dart';
 import 'app_button.dart';
 import 'dialogs.dart';
-import 'vehicle_art.dart';
+import 'bus_image.dart';
 
 /// Portada a todo el espacio disponible: la ilustración automática, que cambia sola con la hora,
 /// el día y las fiestas del año.
@@ -92,6 +94,35 @@ class _LiveCoverState extends State<_LiveCover> with TickerProviderStateMixin, W
     }
   }
 
+  /// PNG de vegetación: árbol, pino, palmera y arbusto (en ese orden).
+  static const _plantAssets = [
+    'assets/trees/arbol.png',
+    'assets/trees/pino.png',
+    'assets/trees/palmera.png',
+    'assets/trees/arbusto.png',
+  ];
+  List<ui.Image> _plants = const [];
+
+  Future<void> _loadPlants() async {
+    try {
+      final loaded = <ui.Image>[];
+      for (final path in _plantAssets) {
+        final data = await rootBundle.load(path);
+        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+        loaded.add((await codec.getNextFrame()).image);
+      }
+      if (!mounted) {
+        for (final i in loaded) {
+          i.dispose();
+        }
+        return;
+      }
+      setState(() => _plants = loaded);
+    } catch (_) {
+      // Sin los PNG simplemente no se dibuja vegetación.
+    }
+  }
+
   DateTime get _now => widget.at ?? DateTime.now();
 
   @override
@@ -102,6 +133,7 @@ class _LiveCoverState extends State<_LiveCover> with TickerProviderStateMixin, W
     WidgetsBinding.instance.addObserver(this);
     _startClock();
     _loadClouds();
+    _loadPlants();
   }
 
   @override
@@ -172,6 +204,9 @@ class _LiveCoverState extends State<_LiveCover> with TickerProviderStateMixin, W
     for (final p in _clouds) {
       p.picture.dispose();
     }
+    for (final i in _plants) {
+      i.dispose();
+    }
     super.dispose();
   }
 
@@ -192,6 +227,7 @@ class _LiveCoverState extends State<_LiveCover> with TickerProviderStateMixin, W
                 busScale: widget.busScale,
                 showBus: widget.showBus,
                 clouds: _clouds,
+                plants: _plants,
                 repaint: repaint,
               ),
               foregroundPainter: CoverPainter(
@@ -210,7 +246,7 @@ class _LiveCoverState extends State<_LiveCover> with TickerProviderStateMixin, W
                           Positioned(
                             right: c.maxWidth * .04,
                             bottom: c.maxHeight * (widget.compact ? .06 : .07),
-                            child: VehicleArt(kind: VehicleKind.bus, width: busW, scene: _current, repaint: repaint),
+                            child: BusImage.city(width: busW, scene: _current, repaint: repaint),
                           ),
                         ],
                       )

@@ -88,6 +88,7 @@ class _AuthFieldState extends State<AuthField> {
             ? IconButton(
                 tooltip: _hidden ? 'Mostrar' : 'Ocultar',
                 onPressed: () => setState(() => _hidden = !_hidden),
+                style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: p.muted),
                 icon: Icon(_hidden ? AppIcons.eye : AppIcons.eyeOff, size: 20, color: p.muted),
               )
             : null,
@@ -110,10 +111,10 @@ class AuthPillButton extends StatelessWidget {
       height: 52,
       child: FilledButton(
         onPressed: loading ? null : onTap,
-        style: FilledButton.styleFrom(shape: const StadiumBorder(), backgroundColor: AppColors.roseButton, foregroundColor: AppColors.ink, disabledBackgroundColor: AppColors.rose.withOpacity(.6)),
+        style: FilledButton.styleFrom(shape: const StadiumBorder(), backgroundColor: AppColors.ink, foregroundColor: Colors.white, disabledBackgroundColor: AppColors.ink.withOpacity(.4), disabledForegroundColor: Colors.white70),
         child: loading
-            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.6, color: AppColors.ink))
-            : Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.ink)),
+            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white))
+            : Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white)),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/unit_code.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/bottom_action_bar.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/page_scaffold.dart';
@@ -50,6 +51,10 @@ class _UnitEntryPageState extends State<UnitEntryPage> {
     final p = context.palette;
     return PageScaffold(
       title: 'Pagar mi pasaje',
+      // Continuar queda fijo hasta abajo de la pantalla (sube con el teclado).
+      bottomBar: BottomActionBar(children: [
+        AppButton(label: 'Continuar', icon: AppIcons.arrowRight, kind: ButtonKind.rose, onPressed: _typed),
+      ]),
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -96,8 +101,6 @@ class _UnitEntryPageState extends State<UnitEntryPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            AppButton(label: 'Continuar', icon: AppIcons.arrowRight, onPressed: _typed),
           ],
         ),
       ),

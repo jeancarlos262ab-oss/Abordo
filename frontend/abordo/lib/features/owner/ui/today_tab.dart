@@ -82,10 +82,10 @@ class _DayPicker extends ConsumerWidget {
           tooltip: tooltip,
           onPressed: onTap,
           style: IconButton.styleFrom(
-            backgroundColor: context.inkAt(.08),
-            foregroundColor: context.inkColor,
-            disabledBackgroundColor: Colors.transparent,
-            disabledForegroundColor: context.inkAt(.25),
+            backgroundColor: AppColors.ink,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: AppColors.ink.withOpacity(.3),
+            disabledForegroundColor: Colors.white60,
             fixedSize: const Size.square(Dimens.minTap),
             shape: const CircleBorder(),
           ),
@@ -139,8 +139,8 @@ class _DayPicker extends ConsumerWidget {
   }
 }
 
-/// Calendario de la app (table_calendar con estilo propio): mes con flechas, días en cuadros
-/// redondeados, hoy marcado con borde rosa y el día elegido relleno. No deja elegir el futuro.
+/// Calendario de la app: mes con flechas y los días del mes en una lista horizontal de círculos
+/// (hoy con borde grueso y el día elegido relleno). No deja elegir el futuro.
 class _CalendarSheet extends StatefulWidget {
   const _CalendarSheet({required this.selected});
   final String selected;
@@ -156,10 +156,93 @@ class _CalendarSheetState extends State<_CalendarSheet> {
 
   static String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+  static const _itemW = 58.0;
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centerSelected());
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Lleva el día elegido al centro de la lista horizontal.
+  void _centerSelected() {
+    if (!_scroll.hasClients) return;
+    final inMonth = _selected.year == _focused.year && _selected.month == _focused.month;
+    final idx = (inMonth ? _selected.day : 1) - 1;
+    final target = idx * _itemW - (_scroll.position.viewportDimension - _itemW) / 2;
+    _scroll.jumpTo(target.clamp(0.0, _scroll.position.maxScrollExtent));
+  }
+
   void _page(int delta) {
     final next = DateTime(_focused.year, _focused.month + delta, 1);
     if (next.isAfter(DateTime(_today.year, _today.month, 1))) return;
     setState(() => _focused = next);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centerSelected());
+  }
+
+  /// Lista horizontal con un círculo por día del mes (el futuro aparece apagado y no se puede elegir).
+  Widget _daysStrip(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final p = context.palette;
+    final count = DateUtils.getDaysInMonth(_focused.year, _focused.month);
+    return SizedBox(
+      height: 92,
+      child: ListView.builder(
+        controller: _scroll,
+        scrollDirection: Axis.horizontal,
+        itemExtent: _itemW,
+        itemCount: count,
+        itemBuilder: (ctx, i) {
+          final d = DateTime(_focused.year, _focused.month, i + 1);
+          final future = d.isAfter(_today);
+          final sel = isSameDay(d, _selected);
+          final isNow = isSameDay(d, _today);
+          final label = DateFormat.E('es_MX').format(d).substring(0, 3);
+          return Semantics(
+            button: true,
+            selected: sel,
+            enabled: !future,
+            label: AppDates.longDay(AppDates.key(d)),
+            excludeSemantics: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: future ? null : () => setState(() => _selected = d),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_cap(label), style: text.labelSmall?.copyWith(color: future ? p.borderStrong : p.muted)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: sel ? AppColors.ink : Colors.transparent,
+                      border: sel ? null : Border.all(color: isNow ? AppColors.ink : context.inkAt(future ? .12 : .32), width: isNow ? 1.5 : 1),
+                    ),
+                    child: Text(
+                      '${d.day}',
+                      style: text.titleMedium?.copyWith(
+                        color: sel ? Colors.white : (future ? p.borderStrong : context.inkColor),
+                        fontWeight: sel || isNow ? FontWeight.w800 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -172,10 +255,10 @@ class _CalendarSheetState extends State<_CalendarSheet> {
           tooltip: tip,
           onPressed: onTap,
           style: IconButton.styleFrom(
-            backgroundColor: p.accentSoft,
-            foregroundColor: AppColors.ink,
-            disabledBackgroundColor: p.field,
-            disabledForegroundColor: p.borderStrong,
+            backgroundColor: AppColors.ink,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: AppColors.ink.withOpacity(.3),
+            disabledForegroundColor: Colors.white60,
             fixedSize: const Size.square(40),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rSm)),
           ),
@@ -186,15 +269,18 @@ class _CalendarSheetState extends State<_CalendarSheet> {
       final on = isSameDay(_selected, day);
       return Expanded(
         child: GestureDetector(
-          onTap: () => setState(() => _selected = _focused = day),
+          onTap: () {
+            setState(() => _selected = _focused = day);
+            WidgetsBinding.instance.addPostFrameCallback((_) => _centerSelected());
+          },
           child: Container(
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: on ? AppColors.rose : p.field,
+              color: on ? AppColors.ink : AppColors.ink.withOpacity(.55),
               borderRadius: BorderRadius.circular(99),
             ),
-            child: Text(label, style: text.labelLarge?.copyWith(color: on ? AppColors.ink : p.text)),
+            child: Text(label, style: text.labelLarge?.copyWith(color: Colors.white)),
           ),
         ),
       );
@@ -221,46 +307,7 @@ class _CalendarSheetState extends State<_CalendarSheet> {
             ],
           ),
           const SizedBox(height: 8),
-          TableCalendar<void>(
-            locale: 'es_MX',
-            firstDay: DateTime(2024, 1, 1),
-            lastDay: _today,
-            focusedDay: _focused.isAfter(_today) ? _today : _focused,
-            currentDay: _today,
-            selectedDayPredicate: (d) => isSameDay(d, _selected),
-            startingDayOfWeek: StartingDayOfWeek.monday,
-            headerVisible: false,
-            availableGestures: AvailableGestures.horizontalSwipe,
-            rowHeight: 48,
-            daysOfWeekHeight: 34,
-            onDaySelected: (sel, foc) => setState(() {
-              _selected = sel;
-              _focused = foc;
-            }),
-            onPageChanged: (foc) => setState(() => _focused = foc),
-            daysOfWeekStyle: DaysOfWeekStyle(
-              dowTextFormatter: (date, locale) => DateFormat.E(locale).format(date).substring(0, 1).toUpperCase(),
-              weekdayStyle: text.labelMedium!.copyWith(color: p.muted),
-              weekendStyle: text.labelMedium!.copyWith(color: AppColors.ink),
-            ),
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              cellMargin: const EdgeInsets.all(3),
-              defaultTextStyle: text.titleMedium!,
-              weekendTextStyle: text.titleMedium!,
-              disabledTextStyle: text.titleMedium!.copyWith(color: p.borderStrong),
-              todayTextStyle: text.titleMedium!.copyWith(color: AppColors.ink, fontWeight: FontWeight.w800),
-              todayDecoration: BoxDecoration(
-                color: p.accentSoft,
-                borderRadius: BorderRadius.circular(Dimens.rSm + 2),
-                border: Border.all(color: AppColors.ink, width: 1),
-              ),
-              selectedTextStyle: text.titleMedium!.copyWith(color: AppColors.ink, fontWeight: FontWeight.w800),
-              selectedDecoration: BoxDecoration(color: AppColors.rose, borderRadius: BorderRadius.circular(Dimens.rSm + 2)),
-              defaultDecoration: BoxDecoration(borderRadius: BorderRadius.circular(Dimens.rSm + 2)),
-              weekendDecoration: BoxDecoration(borderRadius: BorderRadius.circular(Dimens.rSm + 2)),
-            ),
-          ),
+          _daysStrip(context),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -319,7 +366,7 @@ class _Content extends StatelessWidget {
   }
 }
 
-/// La cifra del día: el único bloque oscuro de la pantalla. Total, curva acumulada y tres datos.
+/// La cifra del día: sin fondo, solo contorno (como el bloque de pagar mi pasaje). Total, curva acumulada y tres datos.
 class _TotalPanel extends StatelessWidget {
   const _TotalPanel({required this.summary, required this.isToday});
   final DaySummary summary;
@@ -328,18 +375,22 @@ class _TotalPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final soft = Colors.white.withOpacity(.62);
+    final ink = context.inkColor;
+    final soft = context.inkAt(.62);
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-      decoration: BoxDecoration(color: context.panelColor, borderRadius: BorderRadius.circular(Dimens.rXl)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Dimens.rXl),
+        border: Border.all(color: context.inkAt(.32), width: 1),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (isToday) const PulseDot(size: 8, color: AppColors.rose) else const Icon(AppIcons.calendar, size: 16, color: AppColors.rose),
+              if (isToday) PulseDot(size: 8, color: ink) else Icon(AppIcons.calendar, size: 16, color: ink),
               SizedBox(width: isToday ? 4 : 8),
-              Text(isToday ? 'Cobros de hoy' : 'Cobros del día', style: text.labelMedium?.copyWith(color: AppColors.rose)),
+              Text(isToday ? 'Cobros de hoy' : 'Cobros del día', style: text.labelMedium?.copyWith(color: ink)),
             ],
           ),
           const SizedBox(height: 10),
@@ -349,13 +400,13 @@ class _TotalPanel extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(Money.format(summary.totalCents), style: tabular(text.displayLarge).copyWith(color: Colors.white, fontSize: 52)),
+              child: Text(Money.format(summary.totalCents), style: tabular(text.displayLarge).copyWith(color: ink, fontSize: 52)),
             ),
           ),
           const SizedBox(height: 2),
           Text(_count(summary.count, 'pasaje cobrado', 'pasajes cobrados'), style: text.bodyMedium?.copyWith(color: soft)),
           const SizedBox(height: 18),
-          Sparkline(values: summary.cumulative, semanticLabel: 'Gráfica del dinero acumulado durante el día', color: AppColors.rose),
+          Sparkline(values: summary.cumulative, semanticLabel: 'Gráfica del dinero acumulado durante el día', color: ink),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -366,7 +417,7 @@ class _TotalPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Container(height: 1, color: Colors.white.withOpacity(.12)),
+          Container(height: 1, color: context.inkAt(.2)),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -397,10 +448,10 @@ class _PanelStat extends StatelessWidget {
       excludeSemantics: true,
       child: Column(
         children: [
-          Icon(icon, size: 18, color: AppColors.rose),
+          Icon(icon, size: 18, color: context.inkColor),
           const SizedBox(height: 4),
-          Text(value, style: tabular(text.headlineSmall).copyWith(color: Colors.white)),
-          Text(label, style: text.bodySmall?.copyWith(color: Colors.white.withOpacity(.62))),
+          Text(value, style: tabular(text.headlineSmall).copyWith(color: context.inkColor)),
+          Text(label, style: text.bodySmall?.copyWith(color: context.inkAt(.62))),
         ],
       ),
     );
@@ -410,7 +461,7 @@ class _PanelStat extends StatelessWidget {
 class _PanelDivider extends StatelessWidget {
   const _PanelDivider();
   @override
-  Widget build(BuildContext context) => Container(width: 1, height: 40, color: Colors.white.withOpacity(.12));
+  Widget build(BuildContext context) => Container(width: 1, height: 40, color: context.inkAt(.2));
 }
 
 class RankedRow {
@@ -539,8 +590,8 @@ class _AllChargesRow extends StatelessWidget {
                   Container(
                     width: 46,
                     height: 46,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: context.inkAt(.08)),
-                    child: Icon(AppIcons.receipt, size: 22, color: context.inkColor),
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.ink),
+                    child: const Icon(AppIcons.receipt, size: 22, color: Colors.white),
                   ),
                   const SizedBox(width: 14),
                   Expanded(

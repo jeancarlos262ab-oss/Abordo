@@ -64,9 +64,10 @@ abstract final class AppTheme {
     final isDark = brightness == Brightness.dark;
     final p = isDark ? AppPalette.dark : AppPalette.light;
 
-    // La acción principal es el rosa de Inter Miami con texto negro, en claro y en oscuro.
-    final primary = isDark ? AppColors.rose : AppColors.roseButton;
-    const onPrimary = AppColors.ink;
+    // Los botones son negros con texto blanco (como los de la pantalla del pasajero).
+    // Todos los botones son negros con texto blanco.
+    const primary = AppColors.ink;
+    const onPrimary = Colors.white;
 
     final scheme = ColorScheme(
       brightness: brightness,
@@ -99,7 +100,12 @@ abstract final class AppTheme {
           borderSide: BorderSide(color: color, width: width),
         );
 
-    final buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rMd));
+    ButtonStyle blackButton(OutlinedBorder shape) => ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.disabled) ? AppColors.ink.withOpacity(.38) : AppColors.ink),
+          foregroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.disabled) ? Colors.white.withOpacity(.6) : Colors.white),
+          elevation: const WidgetStatePropertyAll(0),
+          shape: WidgetStatePropertyAll(shape),
+        );
 
     return ThemeData(
       useMaterial3: true,
@@ -141,15 +147,26 @@ abstract final class AppTheme {
         prefixIconColor: p.muted,
         suffixIconColor: p.muted,
       ),
-      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(shape: buttonShape)),
-      textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(shape: buttonShape)),
+      filledButtonTheme: FilledButtonThemeData(style: blackButton(const StadiumBorder())),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: blackButton(const StadiumBorder())),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: blackButton(const StadiumBorder())),
+      textButtonTheme: TextButtonThemeData(style: blackButton(const StadiumBorder())),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.ink,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.ink.withOpacity(.3),
+          disabledForegroundColor: Colors.white.withOpacity(.6),
+          shape: const CircleBorder(),
+        ),
+      ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         elevation: 0,
         focusElevation: 0,
         hoverElevation: 0,
         highlightElevation: 0,
-        backgroundColor: AppColors.roseButton,
-        foregroundColor: AppColors.ink,
+        backgroundColor: AppColors.ink,
+        foregroundColor: Colors.white,
         shape: const CircleBorder(),
       ),
       bottomSheetTheme: BottomSheetThemeData(

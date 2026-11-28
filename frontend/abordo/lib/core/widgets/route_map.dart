@@ -249,12 +249,12 @@ class _MapButton extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       child: Material(
-        color: active ? AppColors.rose : Colors.white,
-        shape: CircleBorder(side: BorderSide(color: active ? AppColors.ink : p.border)),
+        color: AppColors.ink,
+        shape: CircleBorder(side: active ? const BorderSide(color: Colors.white, width: 2) : BorderSide.none),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,
-          child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 22, color: AppColors.ink)),
+          child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 22, color: Colors.white)),
         ),
       ),
     );
@@ -272,7 +272,7 @@ class _ZoomButton extends StatelessWidget {
         button: true,
         label: label,
         excludeSemantics: true,
-        child: InkWell(onTap: onTap, child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 22, color: AppColors.ink))),
+        child: Material(color: AppColors.ink, child: InkWell(onTap: onTap, child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 22, color: Colors.white)))),
       );
 }
 
@@ -298,15 +298,14 @@ class _KindTile extends StatelessWidget {
           width: 120,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: selected ? p.accentSoft : null,
+            color: selected ? AppColors.ink : AppColors.ink.withOpacity(.55),
             borderRadius: BorderRadius.circular(Dimens.rMd),
-            border: Border.all(color: selected ? AppColors.ink : p.outline, width: selected ? 2 : 1),
           ),
           child: Column(
             children: [
-              Icon(kind.icon, size: 28, color: selected ? AppColors.ink : p.muted),
+              Icon(kind.icon, size: 28, color: Colors.white),
               const SizedBox(height: 8),
-              Text(kind.label, style: text.labelLarge),
+              Text(kind.label, style: text.labelLarge?.copyWith(color: Colors.white)),
             ],
           ),
         ),
@@ -359,8 +358,7 @@ class RouteMapPage extends StatelessWidget {
                       IconButton(
                         onPressed: () => Navigator.of(context).maybePop(),
                         tooltip: 'Regresar',
-                        color: AppColors.ink,
-                        style: IconButton.styleFrom(fixedSize: const Size.square(48)),
+                        style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: AppColors.ink, fixedSize: const Size.square(48)),
                         icon: const Icon(AppIcons.back, size: 24),
                       ),
                       Expanded(

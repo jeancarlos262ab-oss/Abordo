@@ -63,13 +63,24 @@ describe("flujo completo ABORDO", () => {
   });
 
   it("separa permisos por rol", async () => {
-    const l = await call("POST", "/api/auth/login", { body: { login: "marcos", secret: "1234" } });
+    const l = await call("POST", "/api/auth/login", { body: { login: "marcos", secret: "1234", role: "driver" } });
     assert.equal(l.status, 200);
     driver = l.body.token;
     assert.equal((await call("GET", "/api/owner/units", { token: driver })).status, 403);
     assert.equal((await call("GET", "/api/driver/shift", { token: owner })).status, 403);
     assert.equal((await call("GET", "/api/driver/shift")).status, 401);
-    assert.equal((await call("POST", "/api/auth/login", { body: { login: "marcos", secret: "0000" } })).status, 401);
+    assert.equal((await call("POST", "/api/auth/login", { body: { login: "marcos", secret: "0000", role: "driver" } })).status, 401);
+  });
+
+  it("cada entrada solo acepta a los usuarios de su rol", async () => {
+    // El chofer "marcos" con su PIN correcto, pero por la entrada del dueño o del pasajero: rechazado.
+    for (const role of ["owner", "passenger"]) {
+      const r = await call("POST", "/api/auth/login", { body: { login: "marcos", secret: "1234", role } });
+      assert.equal(r.status, 401);
+      assert.equal(r.body.error.message, "Usuario o contraseña incorrectos.");
+    }
+    // Sin indicar la entrada tampoco se puede entrar.
+    assert.equal((await call("POST", "/api/auth/login", { body: { login: "marcos", secret: "1234" } })).status, 400);
   });
 
   it("el chofer abre turno y el pasajero paga", async () => {
@@ -154,15 +165,15 @@ describe("concurrencia y bordes (Postgres)", () => {
     u1 = (await call("POST", "/api/owner/units", { token: owner, body: { label: "U1", route: "R1", fareCents: 1000 } })).body;
     u2 = (await call("POST", "/api/owner/units", { token: owner, body: { label: "U2", route: "R2", fareCents: 2000 } })).body;
     for (const login of ["cho1", "cho2"]) await call("POST", "/api/owner/drivers", { token: owner, body: { name: `Chofer ${login}`, login, pin: "1234" } });
-    d1 = (await call("POST", "/api/auth/login", { body: { login: "cho1", secret: "1234" } })).body.token;
-    d2 = (await call("POST", "/api/auth/login", { body: { login: "cho2", secret: "1234" } })).body.token;
+    d1 = (await call("POST", "/api/auth/login", { body: { login: "cho1", secret: "1234", role: "driver" } })).body.token;
+    d2 = (await call("POST", "/api/auth/login", { body: { login: "cho2", secret: "1234", role: "driver" } })).body.token;
   });
 
   it("registros simultáneos con el mismo usuario: uno gana, el otro recibe 409 (no 500)", async () => {
     const body = { name: "Carrera", login: "Carrera", secret: "contraseña-segura" };
     const rs = await Promise.all([1, 2, 3, 4].map(() => call("POST", "/api/auth/register-owner", { body })));
     assert.deepEqual(rs.map((r) => r.status).sort(), [201, 409, 409, 409]);
-    assert.equal((await call("POST", "/api/auth/login", { body: { login: "CARRERA", secret: "contraseña-segura" } })).status, 200); // login sin distinguir mayúsculas
+    assert.equal((await call("POST", "/api/auth/login", { body: { login: "CARRERA", secret: "contraseña-segura", role: "owner" } })).status, 200); // login sin distinguir mayúsculas
   });
 
   it("turnos simultáneos: un chofer no abre dos y una unidad no tiene dos choferes", async () => {
@@ -234,7 +245,7 @@ describe("pasajero con cuenta", () => {
     pax = r.body.token;
     assert.equal((await call("POST", "/api/auth/register-passenger", { body: { ...body, login: "ANA" } })).status, 409);
     assert.equal((await call("POST", "/api/auth/register-passenger", { body: { ...body, login: "ana2", secret: "corta" } })).status, 400);
-    assert.equal((await call("POST", "/api/auth/login", { body: { login: "ana", secret: body.secret } })).status, 200);
+    assert.equal((await call("POST", "/api/auth/login", { body: { login: "ana", secret: body.secret, role: "passenger" } })).status, 200);
     assert.equal((await call("GET", "/api/auth/me", { token: pax })).body.user.role, "passenger");
     assert.equal((await call("GET", "/api/owner/units", { token: pax })).status, 403);
     assert.equal((await call("GET", "/api/driver/shift", { token: pax })).status, 403);

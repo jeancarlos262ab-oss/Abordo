@@ -254,8 +254,8 @@ class _BankChip extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       child: Material(
-        color: selected ? context.buttonBg : Colors.transparent,
-        shape: StadiumBorder(side: selected ? BorderSide.none : BorderSide(color: context.inkAt(.3))),
+        color: selected ? context.buttonBg : context.buttonBg.withOpacity(.55),
+        shape: const StadiumBorder(),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -266,7 +266,7 @@ class _BankChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: selected ? context.buttonFg : context.inkColor)),
+                  Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: context.buttonFg)),
                 ],
               ),
             ),
@@ -283,21 +283,26 @@ class _LogoutRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = context.dangerInk;
     return Semantics(
       button: true,
       label: 'Cerrar sesión',
       excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Row(
-            children: [
-              Icon(AppIcons.signOut, size: 22, color: color),
-              const SizedBox(width: 12),
-              Text('Cerrar sesión', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color, fontSize: 15)),
-            ],
+      child: Material(
+        color: AppColors.pinkDeep,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(AppIcons.signOut, size: 22, color: AppColors.ink),
+                const SizedBox(width: 12),
+                Text('Cerrar sesión', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.ink, fontSize: 15)),
+              ],
+            ),
           ),
         ),
       ),

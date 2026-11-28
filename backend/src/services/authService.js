@@ -26,11 +26,13 @@ export function authService({ users, config }) {
     hash,
     registerOwner: (data) => register("owner", data),
     registerPassenger: (data) => register("passenger", data),
-    async login({ login, secret }) {
+    async login({ login, secret, role }) {
       const u = await users.findByLogin(login);
       // Se compara siempre contra un hash para no revelar si el usuario existe por tiempo de respuesta.
       const ok = await bcrypt.compare(secret, u?.secretHash ?? "$2a$04$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvali");
-      if (!u || !ok || !u.active) throw unauthorized("Usuario o contraseña incorrectos.");
+      // Si el usuario es de otro rol (p. ej. un dueño entrando por la puerta del pasajero) se responde igual
+      // que con una contraseña mala: no se revela que existe en otra entrada.
+      if (!u || !ok || !u.active || u.role !== role) throw unauthorized("Usuario o contraseña incorrectos.");
       return session(u);
     },
     async verifyToken(token) {

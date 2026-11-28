@@ -69,6 +69,7 @@ class ApiClient {
     if (error is Map && error['message'] is String) {
       return ApiException(error['message'] as String, status: status, code: error['code'] as String?);
     }
+    if (status == 409) return ApiException('Ese usuario ya existe. Elige otro.', status: status, code: 'duplicate');
     return switch (e.type) {
       DioExceptionType.connectionError =>
         const ApiException('No hay conexión a internet. Revisa tu señal e intenta otra vez.'),

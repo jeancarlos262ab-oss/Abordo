@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/bottom_action_bar.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/submit_mixin.dart';
@@ -40,6 +41,9 @@ class _RegisterOwnerPageState extends ConsumerState<RegisterOwnerPage> with Subm
     final text = Theme.of(context).textTheme;
     return PageScaffold(
       title: 'Crear mi cuenta',
+      bottomBar: BottomActionBar(children: [
+        AppButton(label: 'Crear cuenta', icon: AppIcons.check, loading: busy, onPressed: _submit),
+      ]),
       hero: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -80,8 +84,6 @@ class _RegisterOwnerPageState extends ConsumerState<RegisterOwnerPage> with Subm
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            AppButton(label: 'Crear cuenta', icon: AppIcons.check, loading: busy, onPressed: _submit),
           ],
         ),
       ),

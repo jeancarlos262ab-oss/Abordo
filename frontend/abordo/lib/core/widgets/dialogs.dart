@@ -127,7 +127,7 @@ Future<T?> showFormSheet<T>(BuildContext context, {required String title, requir
                 IconButton(
                   tooltip: 'Cerrar',
                   onPressed: () => Navigator.of(ctx).maybePop(),
-                  style: IconButton.styleFrom(backgroundColor: ctx.palette.field, fixedSize: const Size.square(40)),
+                  style: IconButton.styleFrom(fixedSize: const Size.square(40)),
                   icon: const Icon(AppIcons.close, size: 22),
                 ),
               ],

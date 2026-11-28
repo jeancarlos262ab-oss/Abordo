@@ -54,7 +54,7 @@ class ResourceListView<T> extends StatelessWidget {
             child: FloatingActionButton.extended(
               onPressed: onAdd,
               icon: const Icon(AppIcons.plus, size: 26),
-              label: Text(addLabel, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: const Color(0xFF161314))),
+              label: Text(addLabel, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.white)),
             ),
           ),
       ],

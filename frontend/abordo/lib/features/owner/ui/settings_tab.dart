@@ -342,21 +342,26 @@ class _LogoutRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = context.dangerInk;
     return Semantics(
       button: true,
       label: 'Cerrar sesión',
       excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Row(
-            children: [
-              Icon(AppIcons.signOut, size: 22, color: color),
-              const SizedBox(width: 12),
-              Text('Cerrar sesión', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color, fontSize: 15)),
-            ],
+      child: Material(
+        color: AppColors.pinkDeep,
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(AppIcons.signOut, size: 22, color: AppColors.ink),
+                const SizedBox(width: 12),
+                Text('Cerrar sesión', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.ink, fontSize: 15)),
+              ],
+            ),
           ),
         ),
       ),

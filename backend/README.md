@@ -59,7 +59,7 @@ Todo bajo `/api`. Errores: `{ "error": { "code", "message", "details?" } }` con 
 
 | Método y ruta | Rol | Descripción |
 |---|---|---|
-| `POST /auth/login` · `POST /auth/register-owner` · `POST /auth/register-passenger` · `GET /auth/me` | — | Sesión (JWT) |
+| `POST /auth/login` (con `role`: `owner`, `driver` o `passenger`) · `POST /auth/register-owner` · `POST /auth/register-passenger` · `GET /auth/me` | — | Sesión (JWT) |
 | `GET /public/units/:code` | público | Datos de la unidad y precio |
 | `POST /public/units/:code/charges` | público | Genera el cobro CoDi (`payerPhone` opcional para push). Con token de pasajero el cobro queda en su historial y, si no manda `payerPhone`, usa el celular de su cuenta vinculada |
 | `GET /public/charges/:id` | público | Estado del cobro (consulta a pey si sigue pendiente) |

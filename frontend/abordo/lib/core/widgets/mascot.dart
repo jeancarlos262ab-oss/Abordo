@@ -4,8 +4,17 @@ import 'package:flutter/material.dart';
 
 import '../utils/motion.dart';
 
-/// Ruta del PNG de la mascota (decláralo en pubspec.yaml: `assets/mascot/`).
-const mascotAsset = 'assets/mascot/mascota.png';
+/// Qué mascota se muestra según la entrada: pasajero (la de siempre), dueño o chofer.
+enum MascotKind {
+  passenger('assets/mascot/mascota.png'),
+  owner('assets/mascot/mascota_dueno.png'),
+  driver('assets/mascot/mascota_chofer.png');
+
+  const MascotKind(this.asset);
+
+  /// Ruta del PNG (declara la carpeta en pubspec.yaml: `assets/mascot/`).
+  final String asset;
+}
 
 /// Control remoto de la mascota: reacciona cuando el login falla o sale bien.
 class MascotController extends ChangeNotifier {
@@ -25,13 +34,16 @@ class MascotController extends ChangeNotifier {
   }
 }
 
-/// Mascota a partir de tu PNG, completa y sobre una sombra ovalada en el piso.
-/// Tiembla si algo falla y brinca si sale bien (la sombra se queda quieta).
+/// Mascota a partir de tu PNG, completa y sin sombra.
+/// Tiembla si algo falla y brinca si sale bien.
 class Mascot extends StatefulWidget {
-  const Mascot({super.key, this.controller, this.height = 260});
+  const Mascot({super.key, this.controller, this.height = 260, this.kind = MascotKind.passenger});
   final MascotController? controller;
 
-  /// Alto total del conjunto (mascota + sombra).
+  /// Cuál de las tres mascotas dibuja.
+  final MascotKind kind;
+
+  /// Alto de la mascota.
   final double height;
 
   @override
@@ -72,19 +84,14 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    const shadowH = 18.0;
-    const lift = 22.0; // cuánto sube la sombra, detrás de la imagen (súbelo o bájalo a tu gusto)
     final imageH = widget.height; // la imagen ocupa todo el alto y no se mueve
-    final shadowW = math.min(imageH * .62, 220.0);
     final image = Image.asset(
-      mascotAsset,
+      widget.kind.asset,
       height: imageH,
       fit: BoxFit.contain,
       gaplessPlayback: true,
       errorBuilder: (_, __, ___) => SizedBox(height: imageH), // sin el PNG, solo deja el espacio
     );
-    // Sombra: un círculo aplastado, de un solo tono rosa un poco más profundo que el fondo.
-    const shadowColor = Color(0xFFE79DBA);
     return ExcludeSemantics(
       child: SizedBox(
         height: widget.height,
@@ -92,17 +99,6 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
           alignment: Alignment.topCenter,
           clipBehavior: Clip.none,
           children: [
-            Positioned(
-              bottom: lift,
-              child: Container(
-                width: shadowW,
-                height: shadowH,
-                decoration: BoxDecoration(
-                  color: shadowColor,
-                  borderRadius: BorderRadius.all(Radius.elliptical(shadowW / 2, shadowH / 2)),
-                ),
-              ),
-            ),
             Positioned(
               top: 0,
               child: AnimatedBuilder(

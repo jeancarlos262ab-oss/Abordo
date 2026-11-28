@@ -28,9 +28,9 @@ extension OwnerTones on BuildContext {
   /// Superficie oscura para lo más importante de la pantalla (cifra del día, barra inferior).
   Color get panelColor => isDarkTheme ? _p.card : AppColors.ink;
 
-  /// Botones rellenos: tinta con texto rosa en claro; rosa con texto tinta en oscuro.
-  Color get buttonBg => isDarkTheme ? AppColors.rose : AppColors.ink;
-  Color get buttonFg => isDarkTheme ? AppColors.ink : AppColors.rose;
+  /// Todos los botones: fondo negro con texto e iconos blancos.
+  Color get buttonBg => AppColors.ink;
+  Color get buttonFg => Colors.white;
 
   /// Rojo con contraste suficiente sobre el fondo rosa.
   Color get dangerInk => isDarkTheme ? _p.danger : const Color(0xFF7A0F3A);
@@ -216,14 +216,14 @@ class PillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = filled ? context.buttonFg : context.inkColor;
+    final fg = context.buttonFg;
     return Semantics(
       button: true,
       label: label,
       excludeSemantics: true,
       child: Material(
-        color: filled ? context.buttonBg : Colors.transparent,
-        shape: StadiumBorder(side: filled ? BorderSide.none : BorderSide(color: context.inkAt(.3), width: 1)),
+        color: context.buttonBg,
+        shape: const StadiumBorder(),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed == null
@@ -262,7 +262,11 @@ class QuickAction extends StatelessWidget {
     this.semanticLabel,
     this.primary = false,
     this.loading = false,
+    this.compact = false,
   });
+
+  /// Versión chica: solo el círculo (sin texto), para ponerla en una esquina.
+  final bool compact;
   final IconData icon;
   final String label;
   final String? semanticLabel;
@@ -272,7 +276,7 @@ class QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = primary ? context.buttonFg : context.inkColor;
+    final fg = context.buttonFg;
     return Semantics(
       button: true,
       label: semanticLabel ?? label,
@@ -284,23 +288,25 @@ class QuickAction extends StatelessWidget {
                 HapticFeedback.selectionClick();
                 onTap();
               },
-        radius: 44,
+        radius: compact ? 28 : 44,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: EdgeInsets.symmetric(vertical: compact ? 0 : 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 54,
-                height: 54,
+                width: compact ? 42 : 54,
+                height: compact ? 42 : 54,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: primary ? context.buttonBg : context.inkAt(.08)),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: context.buttonBg),
                 child: loading
                     ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: fg))
-                    : Icon(icon, size: 22, color: fg),
+                    : Icon(icon, size: compact ? 20 : 22, color: fg),
               ),
+              if (!compact) ...[
               const SizedBox(height: 6),
               Text(label, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: context.inkColor), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
             ],
           ),
         ),

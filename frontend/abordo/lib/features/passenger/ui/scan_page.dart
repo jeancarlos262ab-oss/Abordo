@@ -150,7 +150,7 @@ class _OnDarkButton extends StatelessWidget {
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(Dimens.buttonHeight),
         backgroundColor: AppColors.ink,
-        foregroundColor: AppColors.rose,
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
         textStyle: Theme.of(context).textTheme.labelLarge,
       ),

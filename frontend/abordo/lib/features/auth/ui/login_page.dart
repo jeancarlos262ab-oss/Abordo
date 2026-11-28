@@ -51,7 +51,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // Con el teclado abierto la mascota se encoge para dejar sitio al formulario.
     final mascotH = keyboardOpen ? 150.0 : 270.0;
 
-    final title = _showLogin ? 'Bienvenido a\n' : 'Crea tu cuenta\n';
+    final roleTitle = switch (widget.role) { Role.driver => 'Chofer', Role.owner => 'Dueño', Role.passenger => null };
+    final title = _showLogin ? 'Bienvenido\n' : 'Crea tu cuenta\n';
     final subtitle = _showLogin
         ? (_isDriver
             ? 'Entra a tu turno con el PIN que te dio tu dueño.'
@@ -78,25 +79,41 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   IconButton(
                     tooltip: 'Volver',
                     onPressed: () => Navigator.of(context).maybePop(),
+                    style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: p.text),
                     icon: Icon(AppIcons.back, color: p.text),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 16),
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          child: Text.rich(
-                            key: ValueKey(_showLogin),
-                            TextSpan(children: [
-                              TextSpan(text: title, style: text.headlineMedium?.copyWith(height: 1.05, letterSpacing: -.8)),
-                              if (_showLogin) TextSpan(text: 'ABORDO', style: text.headlineMedium?.copyWith(height: 1.05, letterSpacing: -.8, color: AppColors.ink)),
-                            ]),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 250),
+                                child: Text.rich(
+                                  key: ValueKey(_showLogin),
+                                  TextSpan(children: [
+                                    TextSpan(text: title, style: text.headlineMedium?.copyWith(height: 1.05, letterSpacing: -.8)),
+                                    if (_showLogin) TextSpan(text: 'ABORDO', style: text.headlineMedium?.copyWith(height: 1.05, letterSpacing: -.8, color: AppColors.ink)),
+                                  ]),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(subtitle, style: text.bodyMedium?.copyWith(color: p.muted)),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(subtitle, style: text.bodyMedium?.copyWith(color: p.muted)),
+                        // Título del rol, hasta la derecha. El pasajero (usuario) no lleva ninguno.
+                        if (roleTitle != null) ...[
+                          const SizedBox(width: 12),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(roleTitle, style: text.titleMedium?.copyWith(color: p.text, fontWeight: FontWeight.w800)),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -104,7 +121,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOut,
-                    child: Center(child: Mascot(controller: _mascot, height: mascotH)),
+                    child: Center(child: Mascot(
+                      controller: _mascot,
+                      height: mascotH,
+                      kind: switch (widget.role) { Role.owner => MascotKind.owner, Role.driver => MascotKind.driver, Role.passenger => MascotKind.passenger },
+                    )),
                   ),
                 ],
               ),
@@ -202,7 +223,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> with _FormBase<_LoginFor
     super.dispose();
   }
 
-  Future<void> _submit() => send(() => ref.read(sessionProvider.notifier).login(login: _login.text, secret: _secret.text));
+  Future<void> _submit() => send(() => ref.read(sessionProvider.notifier).login(login: _login.text, secret: _secret.text, role: widget.role));
 
   @override
   Widget build(BuildContext context) {

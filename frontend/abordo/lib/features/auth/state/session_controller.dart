@@ -19,8 +19,9 @@ class SessionController extends AsyncNotifier<Session?> {
   @override
   Future<Session?> build() => _repo.restore();
 
-  Future<void> login({required String login, required String secret}) async {
-    final session = await _repo.login(login: login.trim(), secret: secret);
+  /// [role] es la entrada desde la que se intenta entrar: cada una solo acepta a sus propios usuarios.
+  Future<void> login({required String login, required String secret, required Role role}) async {
+    final session = await _repo.login(login: login.trim(), secret: secret, role: role);
     state = AsyncData(session);
   }
 

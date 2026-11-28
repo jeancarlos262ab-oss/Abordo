@@ -76,8 +76,7 @@ class _PassengerShellState extends State<PassengerShell> {
                             IconButton(
                               tooltip: 'Regresar',
                               onPressed: () => Navigator.of(context).maybePop(),
-                              color: AppColors.ink,
-                              style: IconButton.styleFrom(fixedSize: const Size.square(48)),
+                              style: IconButton.styleFrom(backgroundColor: Colors.transparent, foregroundColor: AppColors.ink, fixedSize: const Size.square(48)),
                               icon: const Icon(AppIcons.back, size: 24),
                             ),
                           Expanded(

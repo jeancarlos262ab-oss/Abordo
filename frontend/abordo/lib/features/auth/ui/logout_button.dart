@@ -26,7 +26,6 @@ class LogoutAction extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => IconButton(
         onPressed: () => confirmLogout(context, ref),
         tooltip: 'Salir',
-        color: AppColors.ink,
         iconSize: 26,
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         icon: const Icon(AppIcons.signOut),

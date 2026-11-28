@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/dates.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/bottom_action_bar.dart';
+import '../../../core/widgets/bus_image.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/state_views.dart';
-import '../../../core/widgets/status_chip.dart';
 import '../../../core/widgets/submit_mixin.dart';
 import '../../../core/widgets/ticket_card.dart';
 import '../../auth/domain/session.dart';
@@ -21,40 +23,15 @@ import 'pay_page.dart';
 import '../../../core/theme/app_icons.dart';
 
 /// Paso 2: confirmar unidad y precio. Un solo botón principal.
-class ConfirmPage extends ConsumerWidget {
+class ConfirmPage extends ConsumerStatefulWidget {
   const ConfirmPage({super.key, required this.code});
   final String code;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final unit = ref.watch(unitProvider(code));
-    final text = Theme.of(context).textTheme;
-    return PageScaffold(
-      title: 'Pagar mi pasaje',
-      hero: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Confirma\ntu pasaje', style: text.headlineMedium?.copyWith(color: AppColors.ink)),
-        ],
-      ),
-      child: AsyncValueView<UnitInfo>(
-        value: unit,
-        onRetry: () => ref.invalidate(unitProvider(code)),
-        data: (u) => _Confirm(unit: u),
-      ),
-    );
-  }
+  ConsumerState<ConfirmPage> createState() => _ConfirmPageState();
 }
 
-class _Confirm extends ConsumerStatefulWidget {
-  const _Confirm({required this.unit});
-  final UnitInfo unit;
-
-  @override
-  ConsumerState<_Confirm> createState() => _ConfirmState();
-}
-
-class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
+class _ConfirmPageState extends ConsumerState<ConfirmPage> with SubmitMixin<ConfirmPage> {
   final _phone = TextEditingController();
   bool _wantsPhone = false;
 
@@ -69,7 +46,7 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
     if (!on) _phone.clear(); // oculto = no se envía ningún número
   }
 
-  Future<void> _pay() async {
+  Future<void> _pay(UnitInfo unit) async {
     Charge? charge;
     final ok = await submit(() async {
       // Sin número escrito, un pasajero con sesión paga con el celular de su cuenta vinculada.
@@ -78,7 +55,7 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
         final linked = ref.read(passengerProfileProvider).valueOrNull?.account?.phone ?? '';
         if (RegExp(r'^\d{10}$').hasMatch(linked)) phone = linked;
       }
-      charge = await ref.read(passengerRepositoryProvider).createCharge(widget.unit.code, payerPhone: phone);
+      charge = await ref.read(passengerRepositoryProvider).createCharge(unit.code, payerPhone: phone);
     });
     if (ok && mounted) {
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PayPage(initial: charge!)));
@@ -87,9 +64,34 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
 
   @override
   Widget build(BuildContext context) {
+    final unit = ref.watch(unitProvider(widget.code));
+    final text = Theme.of(context).textTheme;
+    final u = unit.valueOrNull;
+    return PageScaffold(
+      title: 'Pagar mi pasaje',
+      // El botón de pagar queda fijo hasta abajo de la pantalla.
+      bottomBar: u != null && u.acceptsPayments
+          ? BottomActionBar(children: [
+              AppButton(label: 'Pagar ${Money.format(u.fareCents)} con CoDi', icon: AppIcons.money, loading: busy, onPressed: () => _pay(u)),
+            ])
+          : null,
+      hero: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Confirma\ntu pasaje', style: text.headlineMedium?.copyWith(color: AppColors.ink)),
+        ],
+      ),
+      child: AsyncValueView<UnitInfo>(
+        value: unit,
+        onRetry: () => ref.invalidate(unitProvider(widget.code)),
+        data: (u) => _buildConfirm(context, u),
+      ),
+    );
+  }
+
+  Widget _buildConfirm(BuildContext context, UnitInfo u) {
     final text = Theme.of(context).textTheme;
     final p = context.palette;
-    final u = widget.unit;
     return Form(
       key: formKey,
       child: Column(
@@ -119,8 +121,16 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  const BusImage(width: 110),
                 ],
               ),
+              details: TicketInfoGrid(items: [
+                TicketInfo('UNIDAD N°', u.code, icon: AppIcons.hash),
+                TicketInfo('FECHA Y HORA', AppDates.dayTime(DateTime.now().toUtc().toIso8601String()), icon: AppIcons.calendar),
+                const TicketInfo('MÉTODO', 'CoDi · app de tu banco', icon: AppIcons.bank),
+                const TicketInfo('COBRO', 'Sin comisión, sin efectivo', icon: AppIcons.shield),
+              ]),
               bottom: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -135,9 +145,18 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const StatusChip(label: 'Sin comisión', good: true),
+                  // Sin fondo: solo icono y texto en rosa.
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(AppIcons.checkCircle, size: 18, color: p.success),
+                      const SizedBox(width: 6),
+                      Text('Sin comisión', style: text.labelMedium?.copyWith(color: p.success)),
+                    ],
+                  ),
                 ],
               ),
+              footer: TicketBarcode(seed: 'UN${u.code}'),
             ),
           ),
           const SizedBox(height: 24),
@@ -169,8 +188,6 @@ class _ConfirmState extends ConsumerState<_Confirm> with SubmitMixin<_Confirm> {
                 validator: Validators.optional(Validators.digits(10, 10, 'El celular')),
               ),
             ),
-            const SizedBox(height: 20),
-            AppButton(label: 'Pagar ${Money.format(u.fareCents)} con CoDi', icon: AppIcons.money, loading: busy, onPressed: _pay),
           ],
         ],
       ),
