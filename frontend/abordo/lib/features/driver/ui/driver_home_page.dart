@@ -11,7 +11,9 @@ import '../../auth/state/session_controller.dart';
 import '../../auth/ui/logout_button.dart';
 import '../domain/driver_models.dart';
 import '../state/driver_providers.dart';
+import '../../../core/theme/app_icons.dart';
 import 'active_shift_view.dart';
+import 'driver_profile_page.dart';
 import 'unit_picker.dart';
 import '../../../core/widgets/cover_image.dart';
 
@@ -28,7 +30,17 @@ class DriverHomePage extends ConsumerWidget {
       cover: true,
       title: 'Hola, $name',
       showBack: false,
-      actions: const [CoverButton(color: AppColors.ink), LogoutAction()],
+      actions: [
+        const CoverButton(color: AppColors.ink),
+        IconButton(
+          tooltip: 'Mi perfil',
+          iconSize: 26,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          icon: const Icon(AppIcons.user),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DriverProfilePage())),
+        ),
+        const LogoutAction(),
+      ],
       hero: _ShiftHero(shift: shift.valueOrNull),
       child: AsyncValueView<ShiftState>(
         value: shift,

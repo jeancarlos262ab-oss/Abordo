@@ -10,7 +10,9 @@ import '../../../core/widgets/dialogs.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/submit_mixin.dart';
 import '../../auth/state/session_controller.dart';
+import '../../../core/utils/money.dart';
 import '../../auth/ui/logout_button.dart';
+import '../../auth/ui/profile_header.dart';
 import '../../owner/ui/owner_widgets.dart';
 import '../domain/passenger_models.dart';
 import '../state/passenger_providers.dart';
@@ -29,7 +31,12 @@ class PassengerAccountTab extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, 32),
       children: [
         if (user != null) ...[
-          _Profile(name: user.name, login: user.login),
+          _Profile(
+            name: user.name,
+            login: user.login,
+            profile: ref.watch(passengerProfileProvider).valueOrNull,
+            history: ref.watch(paymentsProvider).valueOrNull,
+          ),
           const SizedBox(height: 26),
         ],
         OwnerAsync<PassengerProfile>(
@@ -46,29 +53,25 @@ class PassengerAccountTab extends ConsumerWidget {
 }
 
 class _Profile extends StatelessWidget {
-  const _Profile({required this.name, required this.login});
+  const _Profile({required this.name, required this.login, this.profile, this.history});
   final String name;
   final String login;
+  final PassengerProfile? profile;
+  final PaymentHistory? history;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Semantics(
-      container: true,
-      label: '$name, usuario $login, pasajero',
-      child: ExcludeSemantics(
-        child: Column(
-          children: [
-            InitialsAvatar(name: name, size: 84, letters: 1),
-            const SizedBox(height: 14),
-            Text(name, style: text.headlineMedium, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 2),
-            Text('@$login', style: text.bodyMedium?.copyWith(color: context.palette.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 14),
-            const OutlineChip(icon: AppIcons.ticket, label: 'Pasajero'),
-          ],
-        ),
-      ),
+    final paid = history?.items.where((e) => e.status == ChargeStatus.paid).length;
+    return ProfileHeader(
+      name: name,
+      login: login,
+      roleLabel: 'Pasajero',
+      roleIcon: AppIcons.ticket,
+      stats: [
+        ProfileStat(history == null ? '—' : Money.format(history!.monthCents), 'Gastado este mes'),
+        ProfileStat(paid == null ? '—' : '$paid', paid == 1 ? 'Pasaje pagado' : 'Pasajes pagados'),
+        ProfileStat(profile == null ? '—' : (profile!.account?.bank ?? 'Sin vincular'), 'Banco'),
+      ],
     );
   }
 }

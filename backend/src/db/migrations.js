@@ -89,4 +89,14 @@ export const MIGRATIONS = [
   ALTER TABLE charges ADD COLUMN passenger_id INTEGER REFERENCES users(id);   -- NULL: pagó sin cuenta
   CREATE INDEX idx_charges_passenger ON charges (passenger_id, created_at DESC) WHERE passenger_id IS NOT NULL;
   `,
+
+  /* 3 · foto de perfil: una por usuario, guardada en la base (JPEG, PNG o WebP de hasta 500 KB) */
+  `
+  CREATE TABLE user_avatars (
+    user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    mime       TEXT NOT NULL CHECK (mime IN ('image/jpeg','image/png','image/webp')),
+    data       BYTEA NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  `,
 ];

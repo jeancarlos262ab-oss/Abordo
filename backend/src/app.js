@@ -47,6 +47,7 @@ export function createApp({ config, db, log = console, pey = createPeyClient(con
 
   app.get("/health", (_req, res) => res.json({ ok: true, peyMode: config.pey.mode }));
   app.use("/api/webhooks", webhookRoutes({ pey, chargeService: charges })); // antes de express.json: usa cuerpo crudo
+  app.use("/api/auth/avatar", express.json({ limit: "1mb" })); // la foto de perfil es la única ruta con cuerpo grande
   app.use(express.json({ limit: "50kb" }));
 
   app.use("/api/auth", authRoutes({ authService: auth, authenticate }));

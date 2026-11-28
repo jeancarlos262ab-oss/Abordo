@@ -193,7 +193,7 @@ class _CalendarSheetState extends State<_CalendarSheet> {
     final p = context.palette;
     final count = DateUtils.getDaysInMonth(_focused.year, _focused.month);
     return SizedBox(
-      height: 92,
+      height: 84,
       child: ListView.builder(
         controller: _scroll,
         scrollDirection: Axis.horizontal,
@@ -259,7 +259,7 @@ class _CalendarSheetState extends State<_CalendarSheet> {
             foregroundColor: Colors.white,
             disabledBackgroundColor: AppColors.ink.withOpacity(.3),
             disabledForegroundColor: Colors.white60,
-            fixedSize: const Size.square(40),
+            fixedSize: const Size.square(36),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rSm)),
           ),
           icon: Icon(icon, size: 18),
@@ -274,7 +274,7 @@ class _CalendarSheetState extends State<_CalendarSheet> {
             WidgetsBinding.instance.addPostFrameCallback((_) => _centerSelected());
           },
           child: Container(
-            height: 44,
+            height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: on ? AppColors.ink : AppColors.ink.withOpacity(.55),
@@ -287,7 +287,7 @@ class _CalendarSheetState extends State<_CalendarSheet> {
     }
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, 20 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, 12 + MediaQuery.paddingOf(context).bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -298,7 +298,7 @@ class _CalendarSheetState extends State<_CalendarSheet> {
                 child: Semantics(
                   header: true,
                   liveRegion: true,
-                  child: Text(_cap(DateFormat('MMMM yyyy', 'es_MX').format(_focused)), style: text.headlineSmall),
+                  child: Text(_cap(DateFormat('MMMM yyyy', 'es_MX').format(_focused)), style: text.titleLarge),
                 ),
               ),
               nav(AppIcons.caretLeft, 'Mes anterior', () => _page(-1)),
@@ -306,9 +306,9 @@ class _CalendarSheetState extends State<_CalendarSheet> {
               nav(AppIcons.caretRight, 'Mes siguiente', canNext ? () => _page(1) : null),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           _daysStrip(context),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           Row(
             children: [
               chip('Hoy', _today),
@@ -318,7 +318,7 @@ class _CalendarSheetState extends State<_CalendarSheet> {
               chip('Hace 7 días', _today.subtract(const Duration(days: 7))),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           AppButton(
             label: 'Ver ${AppDates.longDay(AppDates.key(_selected))}',
             icon: AppIcons.check,

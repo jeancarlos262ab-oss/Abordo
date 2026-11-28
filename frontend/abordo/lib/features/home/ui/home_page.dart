@@ -119,9 +119,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     centered(FadeSlideIn(child: _PayCard(onOpen: () => _open(context, const UnitEntryPage())))),
-                    // Lo que sigue queda pegado al final de la pantalla.
+                    // El botón circular queda centrado verticalmente en el espacio entre el contenedor
+                    // de los pasos y los botones de abajo (los dos Spacer reparten el sobrante igual).
                     const Spacer(),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 16),
+                    FadeSlideIn(child: Center(child: _PayButton(onOpen: () => _open(context, const UnitEntryPage())))),
+                    const SizedBox(height: 16),
+                    const Spacer(),
                     // Las rutas se ven en el mapa completo, que se abre desde este botón.
                     centered(
                       SizedBox(
@@ -157,8 +161,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-/// Bloque principal: un contenedor sin fondo, solo contorno. A la izquierda el título y los tres
-/// pasos; a la derecha el botón de pagar, redondo.
+/// Bloque principal: sin fondo ni contorno, con el título y los tres pasos en columnas.
 class _PayCard extends StatelessWidget {
   const _PayCard({required this.onOpen});
   final VoidCallback onOpen;
@@ -167,23 +170,15 @@ class _PayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
 
-    Widget step(String n, String title, String detail) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    // Cada paso es una columna: número arriba, título y una línea de apoyo, todo centrado.
+    Widget step(String n, String title, String detail) => Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 28,
-              child: Text(n, style: text.titleLarge?.copyWith(color: AppColors.roseLight, fontWeight: FontWeight.w800, height: 1.1)),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: text.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700, height: 1.2)),
-                  const SizedBox(height: 2),
-                  Text(detail, style: text.bodyMedium?.copyWith(color: Colors.white70, height: 1.25)),
-                ],
-              ),
-            ),
+            Text(n, style: text.headlineMedium?.copyWith(color: AppColors.roseLight, fontWeight: FontWeight.w800, height: 1.1)),
+            const SizedBox(height: 6),
+            Text(title, textAlign: TextAlign.center, style: text.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700, height: 1.2)),
+            const SizedBox(height: 4),
+            Text(detail, textAlign: TextAlign.center, style: text.bodySmall?.copyWith(color: Colors.white70, height: 1.25)),
           ],
         );
 
@@ -191,59 +186,131 @@ class _PayCard extends StatelessWidget {
       container: true,
       label: 'Paga tu pasaje en tres pasos. Uno: busca el código. Dos: escanéalo. Tres: paga con tu app del banco.',
       child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(.55), width: 1),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Paga tu pasaje en 3 pasos', style: text.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800, height: 1.15)),
-                  const SizedBox(height: 14),
-                  step('1', 'Busca el código', 'Junto a la puerta o cerca del chofer.'),
-                  const SizedBox(height: 12),
-                  step('2', 'Escanéalo', 'Apunta la cámara al código.'),
-                  const SizedBox(height: 12),
-                  step('3', 'Paga con tu banco', 'Confirma en tu app y listo.'),
-                ],
-              ),
+            Text('Paga tu pasaje en 3 pasos', textAlign: TextAlign.center, style: text.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800, height: 1.15)),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: step('1', 'Busca el código', 'Junto a la puerta o cerca del chofer.')),
+                const SizedBox(width: 8),
+                Expanded(child: step('2', 'Escanéalo', 'Apunta la cámara al código.')),
+                const SizedBox(width: 8),
+                Expanded(child: step('3', 'Paga con tu banco', 'Confirma en tu app y listo.')),
+              ],
             ),
-            const SizedBox(width: 14),
-            Semantics(
-              button: true,
-              label: 'Pagar mi pasaje',
-              excludeSemantics: true,
-              child: SizedBox(
-                width: 96,
-                height: 96,
-                child: FilledButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    onOpen();
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.rose,
-                    foregroundColor: AppColors.ink,
-                    elevation: 0,
-                    padding: EdgeInsets.zero,
-                    shape: const CircleBorder(),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(AppIcons.scan, size: 28),
-                      const SizedBox(height: 4),
-                      Text('Pagar mi\npasaje', textAlign: TextAlign.center, style: text.labelMedium?.copyWith(fontWeight: FontWeight.w800, height: 1.1)),
-                    ],
-                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Botón circular grande de "Pagar mi pasaje", fuera del contenedor de los pasos.
+/// Cada 5 segundos le pasa un destello tipo espejo para invitar a tocarlo.
+class _PayButton extends StatefulWidget {
+  const _PayButton({required this.onOpen});
+  final VoidCallback onOpen;
+
+  @override
+  State<_PayButton> createState() => _PayButtonState();
+}
+
+class _PayButtonState extends State<_PayButton> with SingleTickerProviderStateMixin {
+  static const _size = 160.0;
+
+  /// Un ciclo dura 5 s; el destello ocupa solo el primer tramo y el resto queda quieto.
+  late final AnimationController _shine = AnimationController(vsync: this, duration: const Duration(seconds: 5));
+
+  @override
+  void initState() {
+    super.initState();
+    _shine.repeat();
+  }
+
+  @override
+  void dispose() {
+    _shine.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final still = reduceMotion(context);
+    return Semantics(
+      button: true,
+      label: 'Pagar mi pasaje',
+      excludeSemantics: true,
+      child: SizedBox(
+        width: _size,
+        height: _size,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: FilledButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  widget.onOpen();
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.rose,
+                  foregroundColor: AppColors.ink,
+                  elevation: 0,
+                  padding: EdgeInsets.zero,
+                  shape: const CircleBorder(),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(AppIcons.scan, size: 44),
+                    const SizedBox(height: 8),
+                    Text('Pagar mi\npasaje', textAlign: TextAlign.center, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800, height: 1.1)),
+                  ],
                 ),
               ),
             ),
+            if (!still)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ClipOval(
+                    child: AnimatedBuilder(
+                      animation: _shine,
+                      builder: (_, __) {
+                        // 0 → 1 durante el primer 18 % del ciclo (~0.9 s); después no se ve.
+                        final p = Curves.easeInOut.transform((_shine.value / .18).clamp(0.0, 1.0));
+                        if (_shine.value > .18) return const SizedBox.shrink();
+                        final dx = -_size * .7 + p * _size * 1.9;
+                        return Transform.translate(
+                          offset: Offset(dx, 0),
+                          child: Transform.rotate(
+                            angle: .5,
+                            // OverflowBox: la franja es más alta que el círculo para cubrirlo de punta a punta.
+                            child: OverflowBox(
+                              minWidth: 0,
+                              minHeight: 0,
+                              maxWidth: 46,
+                              maxHeight: _size * 2,
+                              child: Container(
+                                width: 46,
+                                height: _size * 2,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.white.withOpacity(0), Colors.white.withOpacity(.65), Colors.white.withOpacity(0)],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

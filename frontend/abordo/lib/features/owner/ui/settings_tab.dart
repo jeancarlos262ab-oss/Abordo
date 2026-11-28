@@ -10,6 +10,7 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/submit_mixin.dart';
 import '../../auth/state/session_controller.dart';
 import '../../auth/ui/logout_button.dart';
+import '../../auth/ui/profile_header.dart';
 import '../domain/owner_models.dart';
 import '../state/owner_providers.dart';
 import 'owner_widgets.dart';
@@ -26,7 +27,13 @@ class SettingsTab extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, 32),
       children: [
         if (user != null) ...[
-          _Profile(name: user.name, login: user.login, business: ref.watch(settingsProvider).valueOrNull?.businessName),
+          _Profile(
+            name: user.name,
+            login: user.login,
+            business: ref.watch(settingsProvider).valueOrNull?.businessName,
+            units: ref.watch(unitsProvider).valueOrNull,
+            drivers: ref.watch(driversProvider).valueOrNull,
+          ),
           const SizedBox(height: 26),
         ],
         OwnerAsync<OwnerSettings>(
@@ -49,41 +56,31 @@ class SettingsTab extends ConsumerWidget {
   }
 }
 
-/// Perfil centrado, sin tarjeta: avatar de tinta, nombre, usuario y dos etiquetas de contorno.
+/// Perfil del dueño: cabecera compartida con su mascota, el negocio y tres datos (unidades,
+/// cobrando y choferes).
 class _Profile extends StatelessWidget {
-  const _Profile({required this.name, required this.login, this.business});
+  const _Profile({required this.name, required this.login, this.business, this.units, this.drivers});
   final String name;
   final String login;
   final String? business;
+  final List<OwnerUnit>? units;
+  final List<DriverItem>? drivers;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final hasBusiness = business != null && business!.trim().isNotEmpty;
-    return Semantics(
-      container: true,
-      label: '$name, usuario $login, dueño${hasBusiness ? ', negocio ${business!.trim()}' : ''}',
-      child: ExcludeSemantics(
-        child: Column(
-          children: [
-            InitialsAvatar(name: name, size: 84, letters: 1),
-            const SizedBox(height: 14),
-            Text(name, style: text.headlineMedium, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 2),
-            Text('@$login', style: text.bodyMedium?.copyWith(color: context.palette.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 14),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                const OutlineChip(icon: AppIcons.shield, label: 'Dueño'),
-                if (hasBusiness) OutlineChip(icon: AppIcons.storefront, label: business!.trim()),
-              ],
-            ),
-          ],
-        ),
-      ),
+    String n(int? v) => v == null ? '—' : '$v';
+    return ProfileHeader(
+      name: name,
+      login: login,
+      roleLabel: 'Dueño',
+      roleIcon: AppIcons.shield,
+      chips: [if (hasBusiness) OutlineChip(icon: AppIcons.storefront, label: business!.trim())],
+      stats: [
+        ProfileStat(n(units?.length), units?.length == 1 ? 'Unidad' : 'Unidades'),
+        ProfileStat(n(units?.where((u) => u.active).length), 'Cobrando'),
+        ProfileStat(n(drivers?.length), drivers?.length == 1 ? 'Chofer' : 'Choferes'),
+      ],
     );
   }
 }

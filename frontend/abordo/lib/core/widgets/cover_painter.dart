@@ -399,11 +399,11 @@ class CoverPainter extends CustomPainter {
             _bunting(canvas, size, const [Color(0xFF2FBF71), Colors.white, Color(0xFFE5383B)], rows: 2);
           case Festival.muertos:
             _bunting(canvas, size, const [Color(0xFFFF9F1C), Color(0xFFE63B8B), Color(0xFF8E5BD9), Color(0xFFFFD166), Color(0xFF4CC9F0)], rows: 2);
-          case Festival.halloween:
-            _pumpkins(canvas, sc, roofs);
           default:
             break;
         }
+        // Objetos chicos sobre la banqueta, a la escala de árboles y arbustos.
+        _groundProps(canvas, size, sc, s, f);
       });
     });
   }
@@ -557,37 +557,207 @@ class CoverPainter extends CustomPainter {
     }
   }
 
-  /// Calabazas encendidas sobre dos techos.
-  void _pumpkins(Canvas canvas, CoverScene sc, List<Rect> roofs) {
-    for (final i in const [1, 4]) {
-      if (i >= roofs.length) continue;
-      final r = roofs[i];
-      final pr = math.min(r.width * .26, 11.0);
-      final c = Offset(r.center.dx, r.top - pr * .8);
-      canvas.drawOval(Rect.fromCenter(center: c, width: pr * 2, height: pr * 1.7), Paint()..color = const Color(0xFFFF8A1F));
-      canvas.drawRect(Rect.fromLTWH(c.dx - 1, c.dy - pr * .95, 2.2, pr * .4), Paint()..color = const Color(0xFF3E7D32));
-      final face = Paint()..color = Color.lerp(const Color(0xFF3B1A00), const Color(0xFFFFE08A), sc.night)!;
-      final eyes = Path()
-        ..moveTo(c.dx - pr * .55, c.dy - pr * .1)
-        ..lineTo(c.dx - pr * .15, c.dy - pr * .1)
-        ..lineTo(c.dx - pr * .35, c.dy - pr * .45)
+  // ───────────────────── objetos de fiesta en el suelo ─────────────────────
+
+  /// Oscurece un color con la noche (igual que la vegetación) para que no brille sobre la ciudad.
+  Color _dim(Color c, CoverScene sc) => Color.lerp(c, sc.near, (.55 * sc.night).clamp(0.0, 1.0).toDouble())!;
+
+  /// Pone sobre la banqueta objetos chicos de la fiesta (calabazas, flores, regalos, banderitas…).
+  /// Miden pocos píxeles (a escala de arbustos y farolas, no de edificios) y su reparto cambia cada
+  /// año: la semilla incluye el año, así que cada temporada la ciudad se ve un poco distinta.
+  void _groundProps(Canvas canvas, Size size, CoverScene sc, double s, Festival f) {
+    switch (f) {
+      case Festival.anioNuevo:
+      case Festival.ninos:
+        return; // esas fiestas son de cielo y partículas
+      default:
+        break;
+    }
+    final w = size.width;
+    final h = size.height;
+    final k = (h / 300).clamp(.4, 1.4).toDouble();
+    final y = h * .86 + 2 * k;
+    final rnd = _Rng(1000 + DateTime.now().year * 7 + f.index * 131);
+    var x = (10 + rnd.next() * 30) * k;
+    var i = 0;
+    while (x < w - 8 * k) {
+      final v = rnd.next();
+      final sz = rnd.next();
+      final base = Offset(x, y);
+      var gap = 48 + rnd.next() * 70;
+      switch (f) {
+        case Festival.halloween:
+          // Grupitos de 1 a 3 calabazas, unas con cara y otras lisas.
+          final n = 1 + (v * 3).floor().clamp(0, 2);
+          for (var j = 0; j < n; j++) {
+            final r = (j == 0 ? 5.5 + sz * 2.5 : 3.6 + rnd.next() * 1.6) * k;
+            _pumpkin(canvas, sc, Offset(x + j * 8 * k - (n - 1) * 4 * k, y + (j.isOdd ? 1.2 * k : 0)), r, face: r > 5.2 * k);
+          }
+          gap += 16;
+        case Festival.muertos:
+          _marigolds(canvas, sc, base, k, s, i, candle: v > .55);
+          gap = 40 + rnd.next() * 50;
+        case Festival.navidad:
+          if (v < .5) {
+            _poinsettia(canvas, sc, base, 4.4 * k);
+          } else {
+            _gift(canvas, sc, base, (5.5 + sz * 3) * k, const [Color(0xFFE5383B), Color(0xFF2FBF71), Color(0xFF4CC9F0), Color(0xFFFFD166)][(v * 40).floor() % 4]);
+          }
+        case Festival.reyes:
+          _gift(canvas, sc, base, (5.5 + sz * 3) * k, const [Color(0xFFFFD166), Color(0xFF8E5BD9), Color(0xFFE63B8B)][(v * 30).floor() % 3]);
+        case Festival.amor:
+        case Festival.guadalupe:
+          _rose(canvas, sc, base, k, f == Festival.amor ? const Color(0xFFE5383B) : (v > .5 ? const Color(0xFFE63B5E) : const Color(0xFFF7B5CD)));
+        case Festival.madres:
+          _daisy(canvas, sc, base, k, v > .5 ? Colors.white : const Color(0xFFF7B5CD));
+        case Festival.cincoMayo:
+        case Festival.independencia:
+          _flag(canvas, sc, base, k, s, i);
+          gap += 10;
+        default:
+          break;
+      }
+      x += gap * k;
+      i++;
+    }
+  }
+
+  /// Calabaza chica con costillas y, si es grande, cara que brilla de noche.
+  void _pumpkin(Canvas canvas, CoverScene sc, Offset base, double r, {required bool face}) {
+    final c = Offset(base.dx, base.dy - r * .8);
+    canvas.drawOval(Rect.fromCenter(center: base, width: r * 2.2, height: r * .5), Paint()..color = Colors.black.withOpacity(.2));
+    final body = _dim(const Color(0xFFFF8A1F), sc);
+    final rib = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(.6, r * .12)
+      ..color = _dim(const Color(0xFFD96A00), sc);
+    canvas.drawOval(Rect.fromCenter(center: c, width: r * 2, height: r * 1.7), Paint()..color = body);
+    canvas.drawOval(Rect.fromCenter(center: c, width: r * 1.1, height: r * 1.7), rib);
+    canvas.drawLine(Offset(c.dx, c.dy - r * .85), Offset(c.dx, c.dy + r * .85), rib);
+    canvas.drawRect(Rect.fromLTWH(c.dx - r * .1, c.dy - r * 1.1, r * .22, r * .38), Paint()..color = _dim(const Color(0xFF3E7D32), sc));
+    if (!face) return;
+    final glow = Color.lerp(const Color(0xFF3B1A00), const Color(0xFFFFE08A), sc.night)!;
+    if (sc.night > .3) canvas.drawCircle(c, r * 1.7, Paint()..color = const Color(0xFFFFB627).withOpacity(.16 * sc.night));
+    final fp = Paint()..color = glow;
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx - r * .55, c.dy - r * .05)
+        ..lineTo(c.dx - r * .15, c.dy - r * .05)
+        ..lineTo(c.dx - r * .35, c.dy - r * .45)
         ..close()
-        ..moveTo(c.dx + pr * .15, c.dy - pr * .1)
-        ..lineTo(c.dx + pr * .55, c.dy - pr * .1)
-        ..lineTo(c.dx + pr * .35, c.dy - pr * .45)
-        ..close();
-      canvas.drawPath(eyes, face);
-      final mouth = Path()
-        ..moveTo(c.dx - pr * .55, c.dy + pr * .2)
-        ..lineTo(c.dx - pr * .3, c.dy + pr * .45)
-        ..lineTo(c.dx - pr * .1, c.dy + pr * .2)
-        ..lineTo(c.dx + pr * .1, c.dy + pr * .45)
-        ..lineTo(c.dx + pr * .3, c.dy + pr * .2)
-        ..lineTo(c.dx + pr * .55, c.dy + pr * .45)
-        ..lineTo(c.dx + pr * .55, c.dy + pr * .6)
-        ..lineTo(c.dx - pr * .55, c.dy + pr * .6)
-        ..close();
-      canvas.drawPath(mouth, face);
+        ..moveTo(c.dx + r * .15, c.dy - r * .05)
+        ..lineTo(c.dx + r * .55, c.dy - r * .05)
+        ..lineTo(c.dx + r * .35, c.dy - r * .45)
+        ..close()
+        ..moveTo(c.dx - r * .5, c.dy + r * .22)
+        ..lineTo(c.dx - r * .25, c.dy + r * .5)
+        ..lineTo(c.dx, c.dy + r * .25)
+        ..lineTo(c.dx + r * .25, c.dy + r * .5)
+        ..lineTo(c.dx + r * .5, c.dy + r * .22)
+        ..lineTo(c.dx + r * .5, c.dy + r * .55)
+        ..lineTo(c.dx - r * .5, c.dy + r * .55)
+        ..close(),
+      fp,
+    );
+  }
+
+  /// Regalo chico con moño.
+  void _gift(Canvas canvas, CoverScene sc, Offset base, double g, Color color) {
+    final box = Rect.fromLTWH(base.dx - g / 2, base.dy - g, g, g);
+    canvas.drawOval(Rect.fromCenter(center: base, width: g * 1.3, height: g * .25), Paint()..color = Colors.black.withOpacity(.2));
+    canvas.drawRect(box, Paint()..color = _dim(color, sc));
+    final ribbon = Paint()..color = _dim(Colors.white, sc).withOpacity(.9);
+    canvas.drawRect(Rect.fromLTWH(base.dx - g * .08, box.top, g * .16, g), ribbon);
+    canvas.drawRect(Rect.fromLTWH(box.left, base.dy - g * .58, g, g * .16), ribbon);
+    canvas.drawCircle(Offset(base.dx - g * .16, box.top - g * .08), g * .15, ribbon);
+    canvas.drawCircle(Offset(base.dx + g * .16, box.top - g * .08), g * .15, ribbon);
+  }
+
+  /// Nochebuena: hojas verdes y cinco pétalos rojos.
+  void _poinsettia(Canvas canvas, CoverScene sc, Offset base, double r) {
+    final c = Offset(base.dx, base.dy - r * .9);
+    final leaf = Paint()..color = _dim(const Color(0xFF2E7D32), sc);
+    final petal = Paint()..color = _dim(const Color(0xFFD7263D), sc);
+    for (var a = 0; a < 3; a++) {
+      canvas.save();
+      canvas.translate(c.dx, c.dy + r * .3);
+      canvas.rotate(-1.1 + a * 1.1);
+      canvas.drawOval(Rect.fromCenter(center: Offset(0, -r * .5), width: r * .9, height: r * 1.5), leaf);
+      canvas.restore();
+    }
+    for (var a = 0; a < 5; a++) {
+      canvas.save();
+      canvas.translate(c.dx, c.dy);
+      canvas.rotate(a * 2 * math.pi / 5);
+      canvas.drawOval(Rect.fromCenter(center: Offset(0, -r * .55), width: r * .8, height: r * 1.2), petal);
+      canvas.restore();
+    }
+    canvas.drawCircle(c, r * .22, Paint()..color = const Color(0xFFFFD166));
+  }
+
+  /// Cempasúchil en montoncito; algunos llevan una veladora que parpadea de noche.
+  void _marigolds(Canvas canvas, CoverScene sc, Offset base, double k, double s, int i, {required bool candle}) {
+    canvas.drawOval(Rect.fromCenter(center: Offset(base.dx, base.dy - 1.5 * k), width: 14 * k, height: 4.5 * k), Paint()..color = _dim(const Color(0xFF2E7D32), sc));
+    const spots = [Offset(-4.5, -3.8), Offset(0, -5.2), Offset(4.5, -3.6), Offset(-2, -2.6), Offset(2.4, -2.4)];
+    for (var j = 0; j < spots.length; j++) {
+      final c = base + spots[j] * k;
+      canvas.drawCircle(c, 2.4 * k, Paint()..color = _dim(j.isEven ? const Color(0xFFFF9F1C) : const Color(0xFFFFB627), sc));
+      canvas.drawCircle(c, 1.1 * k, Paint()..color = _dim(const Color(0xFFE67700), sc));
+    }
+    if (!candle) return;
+    final cx = base.dx + 9 * k;
+    canvas.drawRect(Rect.fromLTWH(cx - 1.1 * k, base.dy - 6 * k, 2.2 * k, 6 * k), Paint()..color = _dim(const Color(0xFFFFF1D6), sc));
+    final fl = .75 + .25 * math.sin(2 * math.pi * (s / 1.4 + i * .31));
+    final on = (.35 + .65 * sc.night);
+    canvas.drawCircle(Offset(cx, base.dy - 7.6 * k), 3.2 * k, Paint()..color = const Color(0xFFFFB627).withOpacity(.2 * on * fl));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, base.dy - 7.6 * k), width: 1.6 * k, height: 2.8 * k * fl), Paint()..color = const Color(0xFFFFD166).withOpacity(on));
+  }
+
+  /// Rosa chica con tallo y dos hojas.
+  void _rose(Canvas canvas, CoverScene sc, Offset base, double k, Color color) {
+    final stem = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1 * k
+      ..color = _dim(const Color(0xFF2E7D32), sc);
+    final top = Offset(base.dx, base.dy - 9 * k);
+    canvas.drawLine(base, top, stem);
+    canvas.drawOval(Rect.fromCenter(center: Offset(base.dx - 2 * k, base.dy - 4 * k), width: 3.4 * k, height: 1.6 * k), Paint()..color = _dim(const Color(0xFF2E7D32), sc));
+    canvas.drawOval(Rect.fromCenter(center: Offset(base.dx + 2 * k, base.dy - 5.6 * k), width: 3.4 * k, height: 1.6 * k), Paint()..color = _dim(const Color(0xFF2E7D32), sc));
+    canvas.drawCircle(top, 2.9 * k, Paint()..color = _dim(color, sc));
+    canvas.drawArc(Rect.fromCenter(center: top, width: 3 * k, height: 3 * k), .4, 4.4, false, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = .7 * k
+      ..color = Colors.black.withOpacity(.22));
+  }
+
+  /// Margarita chica (Día de las Madres).
+  void _daisy(Canvas canvas, CoverScene sc, Offset base, double k, Color petals) {
+    final top = Offset(base.dx, base.dy - 8 * k);
+    canvas.drawLine(base, top, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1 * k
+      ..color = _dim(const Color(0xFF2E7D32), sc));
+    for (var a = 0; a < 6; a++) {
+      final ang = a * math.pi / 3;
+      canvas.drawCircle(top + Offset(math.cos(ang), math.sin(ang)) * 1.9 * k, 1.5 * k, Paint()..color = _dim(petals, sc));
+    }
+    canvas.drawCircle(top, 1.2 * k, Paint()..color = _dim(const Color(0xFFFFC145), sc));
+  }
+
+  /// Banderita tricolor en un palito, con un vaivén leve.
+  void _flag(Canvas canvas, CoverScene sc, Offset base, double k, double s, int i) {
+    final top = Offset(base.dx, base.dy - 15 * k);
+    canvas.drawLine(base, top, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1 * k
+      ..color = _dim(const Color(0xFF8D6E63), sc));
+    final wave = math.sin(2 * math.pi * (s / 2.5 + i * .27)) * .9 * k;
+    const colors = [Color(0xFF2FBF71), Colors.white, Color(0xFFE5383B)];
+    for (var j = 0; j < 3; j++) {
+      canvas.drawRect(
+        Rect.fromLTWH(top.dx + 1 * k + j * 2.8 * k + (j == 2 ? wave : wave * .4), top.dy + (j == 1 ? .4 * k : 0), 2.9 * k, 5.6 * k),
+        Paint()..color = _dim(colors[j], sc),
+      );
     }
   }
 

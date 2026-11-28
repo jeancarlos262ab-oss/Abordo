@@ -34,12 +34,12 @@ class AppDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: p.background,
       surfaceTintColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rXl + 4)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Dimens.rXl)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: const BoxConstraints(maxWidth: 360),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -47,23 +47,23 @@ class AppDialog extends StatelessWidget {
               if (icon != null) ...[
                 Center(
                   child: Container(
-                    width: 64,
-                    height: 64,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(color: iconBackground ?? p.accentSoft, shape: BoxShape.circle),
-                    child: Icon(icon, size: 30, color: iconColor ?? p.text),
+                    child: Icon(icon, size: 22, color: iconColor ?? p.text),
                   ),
                 ),
-                const SizedBox(height: 18),
-              ],
-              Semantics(header: true, child: Text(title, textAlign: TextAlign.center, style: text.headlineSmall)),
-              if (message != null) ...[
                 const SizedBox(height: 10),
-                Text(message!, textAlign: TextAlign.center, style: text.bodyLarge?.copyWith(color: p.muted)),
               ],
-              if (child != null) ...[const SizedBox(height: 18), child!],
-              const SizedBox(height: 24),
+              Semantics(header: true, child: Text(title, textAlign: TextAlign.center, style: text.titleLarge)),
+              if (message != null) ...[
+                const SizedBox(height: 6),
+                Text(message!, textAlign: TextAlign.center, style: text.bodyMedium?.copyWith(color: p.muted)),
+              ],
+              if (child != null) ...[const SizedBox(height: 12), child!],
+              const SizedBox(height: 16),
               for (var i = 0; i < actions.length; i++) ...[
-                if (i > 0) const SizedBox(height: 10),
+                if (i > 0) const SizedBox(height: 8),
                 actions[i],
               ],
             ],
@@ -115,7 +115,7 @@ Future<T?> showFormSheet<T>(BuildContext context, {required String title, requir
     showDragHandle: true,
     constraints: const BoxConstraints(maxWidth: Dimens.maxContentWidth),
     builder: (ctx) => Padding(
-      padding: EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, MediaQuery.viewInsetsOf(ctx).bottom + 24),
+      padding: EdgeInsets.fromLTRB(Dimens.pagePadding, 0, Dimens.pagePadding, MediaQuery.viewInsetsOf(ctx).bottom + 16),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,16 +123,16 @@ Future<T?> showFormSheet<T>(BuildContext context, {required String title, requir
           children: [
             Row(
               children: [
-                Expanded(child: Semantics(header: true, child: Text(title, style: Theme.of(ctx).textTheme.headlineSmall))),
+                Expanded(child: Semantics(header: true, child: Text(title, style: Theme.of(ctx).textTheme.titleLarge))),
                 IconButton(
                   tooltip: 'Cerrar',
                   onPressed: () => Navigator.of(ctx).maybePop(),
-                  style: IconButton.styleFrom(fixedSize: const Size.square(40)),
-                  icon: const Icon(AppIcons.close, size: 22),
+                  style: IconButton.styleFrom(fixedSize: const Size.square(36)),
+                  icon: const Icon(AppIcons.close, size: 20),
                 ),
               ],
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 10),
             builder(ctx),
           ],
         ),

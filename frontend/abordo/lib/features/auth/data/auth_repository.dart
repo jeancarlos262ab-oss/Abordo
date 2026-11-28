@@ -32,6 +32,13 @@ class AuthRepository {
   Future<Session> registerPassenger({required String name, required String login, required String secret}) async =>
       _persist(await _api.post('/auth/register-passenger', body: {'name': name, 'login': login, 'secret': secret}));
 
+  /// Foto de perfil como data URI (`data:image/jpeg;base64,...`), o null si no tiene.
+  Future<String?> avatar() async => (await _api.get('/auth/avatar'))['avatar'] as String?;
+
+  Future<void> setAvatar(String dataUri) => _api.put('/auth/avatar', body: {'image': dataUri});
+
+  Future<void> clearAvatar() => _api.delete('/auth/avatar');
+
   /// Sesión guardada, o null. Si el servidor responde que el token ya no vale, se borra.
   /// Sin internet se confía en lo guardado para poder abrir la app.
   Future<Session?> restore() async {

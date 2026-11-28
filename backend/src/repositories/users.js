@@ -14,6 +14,20 @@ export function usersRepo(db) {
       const { rows } = await db.query("SELECT * FROM users WHERE owner_id = $1 AND role = 'driver' ORDER BY active DESC, name", [ownerId]);
       return rows.map(toUser);
     },
+    async getAvatar(userId) {
+      const r = first(await db.query("SELECT mime, data FROM user_avatars WHERE user_id = $1", [userId]));
+      return r && { mime: r.mime, data: Buffer.from(r.data) };
+    },
+    async setAvatar(userId, mime, data) {
+      await db.query(
+        `INSERT INTO user_avatars (user_id, mime, data) VALUES ($1,$2,$3)
+         ON CONFLICT (user_id) DO UPDATE SET mime = EXCLUDED.mime, data = EXCLUDED.data, updated_at = now()`,
+        [userId, mime, data],
+      );
+    },
+    async clearAvatar(userId) {
+      await db.query("DELETE FROM user_avatars WHERE user_id = $1", [userId]);
+    },
     findDriver: (ownerId, id) => one("SELECT * FROM users WHERE id = $1 AND owner_id = $2 AND role = 'driver'", [id, ownerId]),
     update: (id, { name, active, secretHash }) =>
       one(

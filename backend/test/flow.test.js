@@ -302,3 +302,33 @@ describe("pasajero con cuenta", () => {
     assert.equal(h.body.payments.find((p) => p.id === c.body.id).status, "expired");
   });
 });
+
+describe("foto de perfil", () => {
+  let tok, other;
+  // PNG real de 1x1 píxel.
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  before(async () => {
+    tok = (await call("POST", "/api/auth/register-passenger", { body: { name: "Foto Uno", login: "fotouno", secret: "contraseña-segura" } })).body.token;
+    other = (await call("POST", "/api/auth/register-passenger", { body: { name: "Foto Dos", login: "fotodos", secret: "contraseña-segura" } })).body.token;
+  });
+
+  it("sin foto devuelve null; guarda, lee y quita la suya", async () => {
+    assert.equal((await call("GET", "/api/auth/avatar", { token: tok })).body.avatar, null);
+    const put = await call("PUT", "/api/auth/avatar", { token: tok, body: { image: png } });
+    assert.equal(put.status, 200);
+    assert.equal(put.body.avatar, png);
+    assert.equal((await call("GET", "/api/auth/avatar", { token: tok })).body.avatar, png);
+    assert.equal((await call("GET", "/api/auth/avatar", { token: other })).body.avatar, null); // cada quien la suya
+    assert.equal((await call("DELETE", "/api/auth/avatar", { token: tok })).status, 204);
+    assert.equal((await call("GET", "/api/auth/avatar", { token: tok })).body.avatar, null);
+  });
+
+  it("rechaza lo que no es imagen, el tipo falso y a quien no inició sesión", async () => {
+    const fakeText = "data:image/png;base64," + Buffer.from("esto no es una imagen").toString("base64");
+    assert.equal((await call("PUT", "/api/auth/avatar", { token: tok, body: { image: fakeText } })).status, 400);
+    assert.equal((await call("PUT", "/api/auth/avatar", { token: tok, body: { image: png.replace("image/png", "image/jpeg") } })).status, 400); // PNG disfrazado de JPEG
+    assert.equal((await call("PUT", "/api/auth/avatar", { token: tok, body: { image: "data:text/html;base64,PGI+" } })).status, 400);
+    assert.equal((await call("PUT", "/api/auth/avatar", { body: { image: png } })).status, 401);
+  });
+});

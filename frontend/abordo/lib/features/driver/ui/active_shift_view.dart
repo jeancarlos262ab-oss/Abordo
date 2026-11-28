@@ -72,7 +72,7 @@ class _ActiveShiftViewState extends ConsumerState<ActiveShiftView> {
           title: 'Turno terminado',
           message: 'Tu dueño ya ve este cuadre.',
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
             decoration: BoxDecoration(color: ctx.palette.field, borderRadius: BorderRadius.circular(Dimens.rMd)),
             child: Center(child: StatTile(label: 'Cobraste', value: Money.format(summary.amountCents), caption: '${summary.count} ${summary.count == 1 ? 'pasajero' : 'pasajeros'}')),
           ),
